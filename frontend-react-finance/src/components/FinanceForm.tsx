@@ -1,13 +1,34 @@
-import React from 'react'
-import { useForm } from 'react-hook-form'
-import type { FormData } from '../types/formTypes.ts'
+import React from 'react';
+import { useForm } from 'react-hook-form';
+import { useSupabaseClient, useUser } from '@supabase/auth-helpers-react';
+import type { FormData } from '../types/formTypes';
 
 const FinanceForm: React.FC = () => {
-  const { register, handleSubmit, formState: { errors } } = useForm<FormData>()
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<FormData>();
 
-  const onSubmit = (data: FormData) => {
-    console.log(data)
-  }
+  const supabase = useSupabaseClient();
+  const user = useUser();
+
+  const onSubmit = async (data: FormData) => {
+    if (!user) {
+      console.error('User not authenticated');
+      return;
+    }
+
+    const payload = { ...data, user_id: user.id };
+
+    const { error } = await supabase.from('submissions').insert([payload]);
+
+    if (error) {
+      console.error('Error saving to Supabase:', error.message);
+    } else {
+      alert('Submission saved!');
+    }
+  };
 
   return (
     <form onSubmit={handleSubmit(onSubmit)}>

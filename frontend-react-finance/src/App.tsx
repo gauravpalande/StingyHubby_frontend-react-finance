@@ -1,39 +1,52 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
-import AuthButtons from './components/AuthButtons'
-import FinanceForm from './components/FinanceForm'
+// App.tsx
+import React, { useEffect, useState } from 'react';
+import banner from './assets/stingy-hubby-banner.png'; // adjust path as needed
+import { useSession, useSupabaseClient } from '@supabase/auth-helpers-react';
+import { Auth } from '@supabase/auth-ui-react';
+import { ThemeSupa } from '@supabase/auth-ui-shared';
+import FinanceForm from './components/FinanceForm';
 
-function App() {
-  const [count, setCount] = useState(0)
+const App: React.FC = () => {
+  // Replace 'any' with your actual Database type if you have a generated type from Supabase
+  const supabase = useSupabaseClient<any>();
+  const session = useSession();
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(false);
+  }, []);
+
+  if (loading) return <div>Loading...</div>;
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <AuthButtons />
-      <FinanceForm />
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
-}
+    <div style={{ maxWidth: 720, margin: '0 auto', padding: '24px' }}>
+      <img
+        src={banner}
+        alt="StingyHubby – Spend Smart, Live Rich"
+        style={{ width: '100%', marginBottom: 24 }}
+      />
+      {!session ? (
+        <Auth
+          supabaseClient={supabase}
+          appearance={{ theme: ThemeSupa }}
+          providers={['google']} // or ['google', 'github'] if you enabled more
+        />
+      ) : (
+        <>
+          <h2>Welcome, {session.user.email}!</h2>
+          <button
+            onClick={async () => {
+              await supabase.auth.signOut();
+            }}
+            style={{ marginBottom: 16 }}
+          >
+            Sign out
+          </button>
+          <FinanceForm />
+        </>
+      )}
+    </div>
+  );
+};
 
-export default App
+export default App;

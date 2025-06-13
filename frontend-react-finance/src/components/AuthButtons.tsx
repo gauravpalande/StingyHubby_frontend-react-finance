@@ -1,29 +1,14 @@
-// src/components/AuthButtons.tsx
-import React, { useState } from "react";
-import { loginWithGoogle, logout } from "../auth/useAuth";
-import { onAuthStateChanged } from "firebase/auth";
-import { auth } from "../firebase";
+import { Auth } from '@supabase/auth-ui-react';
+import { ThemeSupa } from '@supabase/auth-ui-shared';
+import { supabase } from '../supabaseClient';
 
-const AuthButtons: React.FC = () => {
-  const [user, setUser] = useState<any>(null);
-
-  React.useEffect(() => {
-    onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-    });
-  }, []);
-
+const AuthButtons = () => {
   return (
-    <div>
-      {user ? (
-        <>
-          <p>Welcome, {user.displayName}</p>
-          <button onClick={logout}>Logout</button>
-        </>
-      ) : (
-        <button onClick={loginWithGoogle}>Login with Google</button>
-      )}
-    </div>
+    <Auth
+      supabaseClient={supabase}
+      appearance={{ theme: ThemeSupa }}
+      providers={['google']}
+    />
   );
 };
 

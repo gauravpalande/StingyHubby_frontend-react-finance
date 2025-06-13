@@ -10,9 +10,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "firebase": "^11.9.0",
+    "@supabase/auth-helpers-react": "^0.5.0",
+    "@supabase/auth-ui-react": "^0.4.7",
+    "@supabase/supabase-js": "^2.50.0",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "recharts": "^2.15.3"
   },
   "devDependencies": {
     "@eslint/js": "^9.25.0",

@@ -1,9 +1,9 @@
 export interface FormData {
-  emergency: string;
-  health: string;
-  retirement: string;
-  creditCards: string;
-  mortgage: string;
-  carPayments: string;
-  utilities: string;
+  emergency: number;
+  health: number;
+  retirement: number;
+  creditCards: number;
+  mortgage: number;
+  carPayments: number;
+  utilities: number;
 }
