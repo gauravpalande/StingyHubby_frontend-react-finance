@@ -6,8 +6,7 @@ const Auth = () => {
       provider: 'google',
       options: {
     redirectTo: 'https://stingy-hubby-frontend-react-finance.vercel.app'
-'
-  }
+      }
     })
     if (error) console.error('OAuth login error:', error.message)
   }
