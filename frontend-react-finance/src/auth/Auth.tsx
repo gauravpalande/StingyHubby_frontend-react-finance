@@ -1,16 +1,11 @@
 import { supabase } from '../supabaseClient'
 
-const redirectTo =
-  window.location.hostname === 'localhost'
-    ? 'http://localhost:3000'
-    : 'https://stingyhubby.vercel.app/';
-
 const Auth = () => {
   const signInWithGoogle = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-    redirectTo: redirectTo
+    redirectTo: 'https://stingyhubby.vercel.app'
       }
     })
     console.log('location : ' ,window.location.hostname);
