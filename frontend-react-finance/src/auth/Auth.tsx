@@ -1,13 +1,19 @@
 import { supabase } from '../supabaseClient'
 
+const redirectTo =
+  window.location.hostname === 'localhost'
+    ? 'http://localhost:3000'
+    : 'https://stingy-hubby-frontend-react-finance.vercel.app';
+
 const Auth = () => {
   const signInWithGoogle = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-    redirectTo: 'https://stingy-hubby-frontend-react-finance.vercel.app'
+    redirectTo: redirectTo
       }
     })
+    console.log(redirectTo);
     if (error) console.error('OAuth login error:', error.message)
   }
 
