@@ -1,83 +1,113 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useSupabaseClient, useUser } from '@supabase/auth-helpers-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import type { FormData } from '../types/formTypes';
 
 const FinanceForm: React.FC = () => {
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<FormData>();
-
+  const { register, handleSubmit, formState: { errors }, reset } = useForm<FormData>();
   const supabase = useSupabaseClient();
   const user = useUser();
+  console.log("Current user ID:", user?.id);
+  const [history, setHistory] = useState<any[]>([]);
+
+  // Fetch past submissions for logged-in user
+  useEffect(() => {
+    const fetchHistory = async () => {
+      if (!user) return;
+      const { data, error } = await supabase
+        .from('submissions')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true });
+
+        console.log("Fetched history:", data); // inside fetchHistory
+
+      if (!error && data) {
+        setHistory(
+          data.map((d: any) => ({
+            ...d,
+            timestamp: new Date(d.created_at).toLocaleDateString(),
+          }))
+        );
+      }
+    };
+    fetchHistory();
+  }, [user, supabase]);
 
   const onSubmit = async (data: FormData) => {
-    if (!user) {
-      console.error('User not authenticated');
-      return;
-    }
+    if (!user) return;
 
     const payload = { ...data, user_id: user.id };
 
     const { error } = await supabase.from('submissions').insert([payload]);
+    if (!error) {
+      reset();
+      // re-fetch updated history
+      const { data: updated, error: fetchError } = await supabase
+        .from('submissions')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true });
 
-    if (error) {
-      console.error('Error saving to Supabase:', error.message);
+      if (!fetchError && updated) {
+        setHistory(
+          updated.map((d: any) => ({
+            ...d,
+            timestamp: new Date(d.created_at).toLocaleDateString(),
+          }))
+        );
+      }
     } else {
-      alert('Submission saved!');
+      console.error('Submit failed:', error.message);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)}>
-      <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr', gap: '12px 24px', alignItems: 'center', marginBottom: '24px' }}>
-        <label htmlFor="emergency" style={{ fontWeight: 'bold' }}>Emergency:</label>
-        <div>
-          <input id="emergency" {...register('emergency', { required: true })} />
-          {errors.emergency && <span style={{ color: 'red', marginLeft: 8 }}>This field is required</span>}
+    <div>
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr', gap: '12px 24px', marginBottom: 24 }}>
+          {['emergency', 'health', 'retirement', 'creditCards', 'mortgage', 'carPayments', 'utilities'].map((field) => (
+            <React.Fragment key={field}>
+              <label htmlFor={field} style={{ fontWeight: 'bold' }}>
+                {field.charAt(0).toUpperCase() + field.slice(1)}:
+              </label>
+              <div>
+                <input id={field} {...register(field as keyof FormData, { required: true })} />
+                {errors[field as keyof FormData] && (
+                  <span style={{ color: 'red', marginLeft: 8 }}>Required</span>
+                )}
+              </div>
+            </React.Fragment>
+          ))}
         </div>
+        <button type="submit">Submit</button>
+      </form>
 
-        <label htmlFor="health" style={{ fontWeight: 'bold' }}>Health:</label>
-        <div>
-          <input id="health" {...register('health', { required: true })} />
-          {errors.health && <span style={{ color: 'red', marginLeft: 8 }}>This field is required</span>}
+      {/* Chart */}
+      {history.length > 0 && (
+        <div style={{ marginTop: 40 }}>
+          <h3>Financial History</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={history}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="timestamp" />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              <Line type="monotone" dataKey="emergency" stroke="#8884d8" />
+              <Line type="monotone" dataKey="health" stroke="#82ca9d" />
+              <Line type="monotone" dataKey="retirement" stroke="#ffc658" />
+              <Line type="monotone" dataKey="creditCards" stroke="#ff7300" />
+              <Line type="monotone" dataKey="mortgage" stroke="#0088FE" />
+              <Line type="monotone" dataKey="carPayments" stroke="#00C49F" />
+              <Line type="monotone" dataKey="utilities" stroke="#FF8042" />
+            </LineChart>
+          </ResponsiveContainer>
         </div>
+      )}
+    </div>
+  );
+};
 
-        <label htmlFor="retirement" style={{ fontWeight: 'bold' }}>Retirement:</label>
-        <div>
-          <input id="retirement" {...register('retirement', { required: true })} />
-          {errors.retirement && <span style={{ color: 'red', marginLeft: 8 }}>This field is required</span>}
-        </div>
-
-        <label htmlFor="creditCards" style={{ fontWeight: 'bold' }}>Credit Cards:</label>
-        <div>
-          <input id="creditCards" {...register('creditCards', { required: true })} />
-          {errors.creditCards && <span style={{ color: 'red', marginLeft: 8 }}>This field is required</span>}
-        </div>
-
-        <label htmlFor="mortgage" style={{ fontWeight: 'bold' }}>Mortgage:</label>
-        <div>
-          <input id="mortgage" {...register('mortgage', { required: true })} />
-          {errors.mortgage && <span style={{ color: 'red', marginLeft: 8 }}>This field is required</span>}
-        </div>
-
-        <label htmlFor="carPayments" style={{ fontWeight: 'bold' }}>Car Payments:</label>
-        <div>
-          <input id="carPayments" {...register('carPayments', { required: true })} />
-          {errors.carPayments && <span style={{ color: 'red', marginLeft: 8 }}>This field is required</span>}
-        </div>
-
-        <label htmlFor="utilities" style={{ fontWeight: 'bold' }}>Utilities:</label>
-        <div>
-          <input id="utilities" {...register('utilities', { required: true })} />
-          {errors.utilities && <span style={{ color: 'red', marginLeft: 8 }}>This field is required</span>}
-        </div>
-      </div>
-      <button type="submit">Submit</button>
-    </form>
-  )
-}
-
-export default FinanceForm
+export default FinanceForm;
