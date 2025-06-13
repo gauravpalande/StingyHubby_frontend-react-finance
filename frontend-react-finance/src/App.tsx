@@ -16,13 +16,17 @@ const App: React.FC = () => {
     setLoading(false);
   }, []);
 
+  const handleSignOut = async () => {
+  const { error } = await supabase.auth.signOut();
+  if (error) console.error('Error signing out:', error.message)};
+
   if (loading) return <div>Loading...</div>;
 
   return (
     <div style={{ maxWidth: 720, margin: '0 auto', padding: '24px' }}>
       <img
         src={banner}
-        alt="StingyHubby – Spend Smart, Live Rich"
+        alt="StingyHubby – Save More, Spend Less, Live Rich"
         style={{ width: '100%', marginBottom: 24 }}
       />
       {!session ? (
@@ -34,14 +38,7 @@ const App: React.FC = () => {
       ) : (
         <>
           <h2>Welcome, {session.user.email}!</h2>
-          <button
-            onClick={async () => {
-              await supabase.auth.signOut();
-            }}
-            style={{ marginBottom: 16 }}
-          >
-            Sign out
-          </button>
+          <button onClick={handleSignOut}>Sign Out</button>
           <FinanceForm />
         </>
       )}
