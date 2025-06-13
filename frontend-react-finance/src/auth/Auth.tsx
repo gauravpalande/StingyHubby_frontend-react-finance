@@ -13,7 +13,7 @@ const Auth = () => {
     redirectTo: redirectTo
       }
     })
-    console.log(redirectTo);
+    console.log('location : ' ,window.location.hostname);
     if (error) console.error('OAuth login error:', error.message)
   }
 
