@@ -3,7 +3,7 @@ import { supabase } from '../supabaseClient'
 const redirectTo =
   window.location.hostname === 'localhost'
     ? 'http://localhost:3000'
-    : 'https://stingy-hubby-frontend-react-finance.vercel.app';
+    : 'https://stingyhubby.vercel.app/';
 
 const Auth = () => {
   const signInWithGoogle = async () => {
