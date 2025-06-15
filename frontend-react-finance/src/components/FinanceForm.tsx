@@ -10,6 +10,8 @@ const FinanceForm: React.FC = () => {
   const user = useUser();
   console.log("Current user ID:", user?.id);
   const [history, setHistory] = useState<any[]>([]);
+  const [income, setIncome] = useState<number>(0);
+
 
   // Fetch past submissions for logged-in user
   useEffect(() => {
@@ -40,7 +42,6 @@ const FinanceForm: React.FC = () => {
   const totalExpense = history.reduce(
     (sum, row) =>
       sum +
-      (row.rent || 0) +
       (row.utilities || 0) +
       (row.mortgage || 0) +
       (row.carPayments || 0),
@@ -81,7 +82,7 @@ const FinanceForm: React.FC = () => {
     <div>
       <form onSubmit={handleSubmit(onSubmit)}>
         <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr', gap: '12px 24px', marginBottom: 24 }}>
-          {['emergency', 'health', 'retirement', 'creditCards', 'mortgage', 'carPayments', 'utilities'].map((field) => (
+          {['income', 'emergency', 'health', 'retirement', 'creditCards', 'mortgage', 'carPayments', 'utilities'].map((field) => (
             <React.Fragment key={field}>
               <label htmlFor={field} style={{ fontWeight: 'bold' }}>
                 {field.charAt(0).toUpperCase() + field.slice(1)}:
@@ -109,6 +110,7 @@ const FinanceForm: React.FC = () => {
               <YAxis />
               <Tooltip />
               <Legend />
+              <Line type="monotone" dataKey="income" stroke="#00b894" />
               <Line type="monotone" dataKey="emergency" stroke="#8884d8" />
               <Line type="monotone" dataKey="health" stroke="#82ca9d" />
               <Line type="monotone" dataKey="retirement" stroke="#ffc658" />
