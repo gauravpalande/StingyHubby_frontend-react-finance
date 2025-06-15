@@ -189,7 +189,7 @@ if (latestEntry) {
             cy="50%"
             outerRadius={100}
             innerRadius={60}
-            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+            label={({ name, percent }) => `${name}: ${(percent).toFixed(0)}%`}
           >
             {expenseBreakdown.map((_, index) => (
               <Cell key={`cell-${index}`} fill={['#8884d8', '#82ca9d', '#ffc658'][index % 3]} />
