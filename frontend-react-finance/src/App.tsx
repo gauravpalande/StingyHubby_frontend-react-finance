@@ -43,7 +43,6 @@ const App: React.FC = () => {
         <>
           {/* Show only when signed in */}
           <h2>Welcome, {session.user.email}!</h2>
-          <AuthButtons />
           <SignOutButton />
           <FinanceForm />
         </>
