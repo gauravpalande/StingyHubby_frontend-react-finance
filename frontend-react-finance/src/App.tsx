@@ -34,8 +34,6 @@ const App: React.FC = () => {
             appearance={{ theme: ThemeSupa }}
             providers={['google']} // or ['google', 'github'] if you enabled more
           />
-          <hr style={{ margin: '24px 0' }} />
-          <h2>Or sign up with Email</h2>
         </>
       ) : (
         <>
