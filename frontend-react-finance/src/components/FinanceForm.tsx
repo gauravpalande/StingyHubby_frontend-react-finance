@@ -35,6 +35,20 @@ const FinanceForm: React.FC = () => {
     fetchHistory();
   }, [user, supabase]);
 
+  // Calculate summary values from history
+  const totalIncome = history.reduce((sum, row) => sum + (row.income || 0), 0);
+  const totalExpense = history.reduce(
+    (sum, row) =>
+      sum +
+      (row.rent || 0) +
+      (row.utilities || 0) +
+      (row.mortgage || 0) +
+      (row.carPayments || 0),
+    0
+  );
+  const savings = totalIncome - totalExpense;
+  const savingsPercent = totalIncome > 0 ? ((savings / totalIncome) * 100).toFixed(2) : 'N/A';
+
   const onSubmit = async (data: FormData) => {
     if (!user) return;
 
@@ -106,6 +120,13 @@ const FinanceForm: React.FC = () => {
           </ResponsiveContainer>
         </div>
       )}
+      <div style={{ marginTop: 24, padding: 16, backgroundColor: '#f3f4f6', borderRadius: 8 }}>
+  <h3>📊 Financial Summary</h3>
+  <p><strong>Total Income:</strong> ${totalIncome.toFixed(2)}</p>
+  <p><strong>Total Expenses:</strong> ${totalExpense.toFixed(2)}</p>
+  <p><strong>Savings:</strong> ${savings.toFixed(2)}</p>
+  <p><strong>Monthly Savings %:</strong> {savingsPercent}%</p>
+</div>
     </div>
   );
 };
