@@ -152,8 +152,11 @@ const FinanceForm: React.FC = () => {
           )}
         </div>
         {suggestion && (
-          <div style={{ marginTop: 16, fontStyle: 'italic' }}>💡 {suggestion}</div>
-        )}
+  <div style={{ marginTop: 24, padding: 16, backgroundColor: '#e8f5e9', borderRadius: 8 }}>
+    <h3>🧠 Smart Suggestions</h3>
+    <p>{suggestion}</p>
+  </div>
+)}
       </div>
     </div>
   );
