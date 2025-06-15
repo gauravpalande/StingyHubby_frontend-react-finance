@@ -134,22 +134,26 @@ const FinanceForm: React.FC = () => {
           </ResponsiveContainer>
         </div>
       )}
-      <div style={{ marginTop: 24, padding: 16, backgroundColor: '#f3f4f6', borderRadius: 8 }}>
-  <h3>📊 Financial Summary</h3>
-  <p><strong>Lifetime Income:</strong> ${totalIncome.toFixed(2)}</p>
-  <p><strong>Lifetime Expenses:</strong> ${totalExpense.toFixed(2)}</p>
-  <p><strong>Lifetime Savings:</strong> ${savings.toFixed(2)}</p>
-  <p><strong>Lifetime Monthly Savings %:</strong> {savingsPercent}%</p>
-  {latest && (
-    <>
-      <h4>Latest Submission</h4>
-      <p><strong>Latest Income:</strong> ${latestIncome.toFixed(2)}</p>
-      <p><strong>Latest Expenses:</strong> ${latestExpense.toFixed(2)}</p>
-      <p><strong>Latest Savings:</strong> ${latestSavings.toFixed(2)}</p>
-      <p><strong>Latest Savings %:</strong> {latestSavingsPercent}%</p>
-    </>
-  )}
-</div>
+      <div style={{ marginTop: 24, padding: 16, backgroundColor: '#f3f4f6', borderRadius: 8, display: 'flex', gap: 32 }}>
+        {/* Lifetime Summary */}
+        <div style={{ flex: 1 }}>
+          <h3>📊 Financial Summary</h3>
+          <p><strong>Lifetime Income:</strong> ${totalIncome.toFixed(2)}</p>
+          <p><strong>Lifetime Expenses:</strong> ${totalExpense.toFixed(2)}</p>
+          <p><strong>Lifetime Savings:</strong> ${savings.toFixed(2)}</p>
+          <p><strong>Lifetime Monthly Savings %:</strong> {savingsPercent}%</p>
+        </div>
+        {/* Latest Submission */}
+        {latest && (
+          <div style={{ flex: 1 }}>
+        <h4>Latest Submission</h4>
+        <p><strong>Latest Income:</strong> ${latestIncome.toFixed(2)}</p>
+        <p><strong>Latest Expenses:</strong> ${latestExpense.toFixed(2)}</p>
+        <p><strong>Latest Savings:</strong> ${latestSavings.toFixed(2)}</p>
+        <p><strong>Latest Savings %:</strong> {latestSavingsPercent}%</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
