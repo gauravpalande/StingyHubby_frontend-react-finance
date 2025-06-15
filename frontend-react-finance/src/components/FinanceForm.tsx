@@ -81,7 +81,7 @@ const FinanceForm: React.FC = () => {
       setSuggestion(`You're spending ${housingPct}% on housing — aim for under 20%.`);
     } else {
       setSuggestion('Your housing costs look healthy.');
-    }
+    } 
   };
 
   return (
