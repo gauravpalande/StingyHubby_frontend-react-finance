@@ -10,7 +10,6 @@ const FinanceForm: React.FC = () => {
   const user = useUser();
   console.log("Current user ID:", user?.id);
   const [history, setHistory] = useState<any[]>([]);
-  const [income, setIncome] = useState<number>(0);
 
 
   // Fetch past submissions for logged-in user
