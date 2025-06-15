@@ -63,15 +63,22 @@ const FinanceForm: React.FC = () => {
     latestIncome > 0 ? ((latestSavings / latestIncome) * 100).toFixed(2) : 'N/A';
 
     const expenseCategories = ['mortgage', 'carPayments', 'utilities'];
+const latestEntry = history[history.length - 1];
 
-    const latestEntry = history[history.length - 1];
-    const totalExpenses = expenseCategories.reduce((sum, key) => sum + (latestEntry[key] || 0), 0);
+let expenseBreakdown: { name: string; value: number; percent: number }[] = [];
 
-    const expenseBreakdown = expenseCategories.map((key) => ({
-      name: key.charAt(0).toUpperCase() + key.slice(1),
-      value: latestEntry[key] || 0,
-      percent: totalExpenses ? ((latestEntry[key] || 0) / totalExpenses) * 100 : 0,
-    }));
+if (latestEntry) {
+  const totalExpenses = expenseCategories.reduce(
+    (sum, key) => sum + (latestEntry[key] || 0),
+    0
+  );
+
+  expenseBreakdown = expenseCategories.map((key) => ({
+    name: key.charAt(0).toUpperCase() + key.slice(1),
+    value: latestEntry[key] || 0,
+    percent: totalExpenses ? ((latestEntry[key] || 0) / totalExpenses) * 100 : 0,
+  }));
+}
 
   const onSubmit = async (data: FormData) => {
     if (!user) return;
