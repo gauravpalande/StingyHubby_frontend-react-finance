@@ -172,8 +172,12 @@ const FinanceForm: React.FC = () => {
         </div>
         {advice && (
           <div style={{ marginTop: 24 }}>
-            <h4>🧠 GPT Advice</h4>
-            <p>{advice}</p>
+            <h4>🧠 StingyHubby Advice</h4>
+            <ol>
+              {advice.split('\n').filter(Boolean).map((item, idx) => (
+                <li key={idx}>{item}</li>
+              ))}
+            </ol>
           </div>
         )}
       </div>
