@@ -7,7 +7,6 @@ import { ThemeSupa } from '@supabase/auth-ui-shared';
 import AuthButtons from './components/AuthButtons';  // or your actual auth UI
 import FinanceForm from './components/FinanceForm';
 import SignOutButton from './components/SignOutButton';
-import EmailAuthWithCaptcha from './components/EmailAuthWithCaptcha';
 
 const App: React.FC = () => {
   // Replace 'any' with your actual Database type if you have a generated type from Supabase
@@ -37,7 +36,6 @@ const App: React.FC = () => {
           />
           <hr style={{ margin: '24px 0' }} />
           <h2>Or sign up with Email</h2>
-          <EmailAuthWithCaptcha />
         </>
       ) : (
         <>
