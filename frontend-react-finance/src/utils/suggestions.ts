@@ -17,6 +17,7 @@ export async function getFinancialAdvice(latest: any) {
   `;
 
   try {
+    console.log('GPT Input:', input);
   const response = await openai.chat.completions.create({
     model: 'gpt-3.5-turbo',
     messages: [{ role: 'user', content: input }],
