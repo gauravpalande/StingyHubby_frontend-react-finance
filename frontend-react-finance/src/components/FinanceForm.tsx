@@ -49,6 +49,19 @@ const FinanceForm: React.FC = () => {
   const savings = totalIncome - totalExpense;
   const savingsPercent = totalIncome > 0 ? ((savings / totalIncome) * 100).toFixed(2) : 'N/A';
 
+  // Latest values
+  const latest = history.length > 0 ? history[history.length - 1] : null;
+  const latestIncome = latest ? Number(latest.income || 0) : 0;
+  const latestExpense =
+    latest
+      ? Number(latest.utilities || 0) +
+        Number(latest.mortgage || 0) +
+        Number(latest.carPayments || 0)
+      : 0;
+  const latestSavings = latestIncome - latestExpense;
+  const latestSavingsPercent =
+    latestIncome > 0 ? ((latestSavings / latestIncome) * 100).toFixed(2) : 'N/A';
+
   const onSubmit = async (data: FormData) => {
     if (!user) return;
 
@@ -123,10 +136,19 @@ const FinanceForm: React.FC = () => {
       )}
       <div style={{ marginTop: 24, padding: 16, backgroundColor: '#f3f4f6', borderRadius: 8 }}>
   <h3>📊 Financial Summary</h3>
-  <p><strong>Total Income:</strong> ${totalIncome.toFixed(2)}</p>
-  <p><strong>Total Expenses:</strong> ${totalExpense.toFixed(2)}</p>
-  <p><strong>Savings:</strong> ${savings.toFixed(2)}</p>
-  <p><strong>Monthly Savings %:</strong> {savingsPercent}%</p>
+  <p><strong>Lifetime Income:</strong> ${totalIncome.toFixed(2)}</p>
+  <p><strong>Lifetime Expenses:</strong> ${totalExpense.toFixed(2)}</p>
+  <p><strong>Lifetime Savings:</strong> ${savings.toFixed(2)}</p>
+  <p><strong>Lifetime Monthly Savings %:</strong> {savingsPercent}%</p>
+  {latest && (
+    <>
+      <h4>Latest Submission</h4>
+      <p><strong>Latest Income:</strong> ${latestIncome.toFixed(2)}</p>
+      <p><strong>Latest Expenses:</strong> ${latestExpense.toFixed(2)}</p>
+      <p><strong>Latest Savings:</strong> ${latestSavings.toFixed(2)}</p>
+      <p><strong>Latest Savings %:</strong> {latestSavingsPercent}%</p>
+    </>
+  )}
 </div>
     </div>
   );
