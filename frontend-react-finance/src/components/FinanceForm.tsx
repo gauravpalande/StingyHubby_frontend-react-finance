@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useSupabaseClient, useUser } from '@supabase/auth-helpers-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import type { FormData } from '../types/formTypes';
 
 const FinanceForm: React.FC = () => {
@@ -61,6 +61,17 @@ const FinanceForm: React.FC = () => {
   const latestSavings = latestIncome - latestExpense;
   const latestSavingsPercent =
     latestIncome > 0 ? ((latestSavings / latestIncome) * 100).toFixed(2) : 'N/A';
+
+    const expenseCategories = ['mortgage', 'carPayments', 'utilities'];
+
+    const latestEntry = history[history.length - 1];
+    const totalExpenses = expenseCategories.reduce((sum, key) => sum + (latestEntry[key] || 0), 0);
+
+    const expenseBreakdown = expenseCategories.map((key) => ({
+      name: key.charAt(0).toUpperCase() + key.slice(1),
+      value: latestEntry[key] || 0,
+      percent: totalExpenses ? ((latestEntry[key] || 0) / totalExpenses) * 100 : 0,
+    }));
 
   const onSubmit = async (data: FormData) => {
     if (!user) return;
@@ -157,8 +168,35 @@ const FinanceForm: React.FC = () => {
           )}
         </div>
       </div>
+  {/* Donut Chart for Spending Breakdown */}
+  {latest && (
+    <div style={{ marginTop: 40 }}>
+      <h3>🧾 Spending Breakdown (Latest Entry)</h3>
+      <ResponsiveContainer width="100%" height={300}>
+        <PieChart>
+          <Pie
+            data={expenseBreakdown}
+            dataKey="value"
+            nameKey="name"
+            cx="50%"
+            cy="50%"
+            outerRadius={100}
+            innerRadius={60}
+            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+          >
+            {expenseBreakdown.map((_, index) => (
+              <Cell key={`cell-${index}`} fill={['#8884d8', '#82ca9d', '#ffc658'][index % 3]} />
+            ))}
+          </Pie>
+          <Tooltip formatter={(value: number) => `$${value.toFixed(2)}`} />
+          <Legend />
+        </PieChart>
+      </ResponsiveContainer>
     </div>
-  );
+  )}
+
+</div>
+);
 };
 
 export default FinanceForm;
