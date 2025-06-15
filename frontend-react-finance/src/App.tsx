@@ -1,16 +1,15 @@
 // src/App.tsx
 import React, { useEffect, useState } from 'react';
-import banner from './assets/stingy-hubby-banner.png'; // adjust path as needed
+import banner from './assets/stingy-hubby-banner.png';
 import { useSession, useSupabaseClient } from '@supabase/auth-helpers-react';
 import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
-import AuthButtons from './components/AuthButtons';  // or your actual auth UI
+import AuthButtons from './components/AuthButtons';
 import FinanceForm from './components/FinanceForm';
 import SignOutButton from './components/SignOutButton';
-import EmailAuthWithCaptcha from './components/EmailAuthWithCaptcha';
+import EmailAuthWithCaptcha from './components/EmailAuthWithCaptcha'; // make sure path is correct
 
 const App: React.FC = () => {
-  // Replace 'any' with your actual Database type if you have a generated type from Supabase
   const supabase = useSupabaseClient<any>();
   const session = useSession();
   const [loading, setLoading] = useState(true);
@@ -28,21 +27,24 @@ const App: React.FC = () => {
         alt="StingyHubby – Save More, Spend Less, Live Rich"
         style={{ width: '100%', marginBottom: 24 }}
       />
+
       {!session ? (
         <>
+          {/* Show only when not signed in */}
           <Auth
             supabaseClient={supabase}
             appearance={{ theme: ThemeSupa }}
-            providers={['google']} // or ['google', 'github'] if you enabled more
-            onlyThirdPartyProviders // disables email/password
+            providers={['google']}
+            onlyThirdPartyProviders
           />
           <EmailAuthWithCaptcha />
         </>
       ) : (
         <>
+          {/* Show only when signed in */}
           <h2>Welcome, {session.user.email}!</h2>
           <AuthButtons />
-          <SignOutButton/>
+          <SignOutButton />
           <FinanceForm />
         </>
       )}
