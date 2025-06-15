@@ -135,10 +135,10 @@ const FinanceForm: React.FC = () => {
         </div>
       )}
       <div style={{ marginTop: 24, padding: 16, backgroundColor: '#f3f4f6', borderRadius: 8 }}>
+        <h3 style={{ marginBottom: 16 }}>📊 Financial Summary</h3>
         <div style={{ display: 'flex', gap: 32 }}>
           {/* Lifetime Summary */}
           <div style={{ flex: 1 }}>
-        <h3>📊 Financial Summary</h3>
         <h4>Lifetime Submission</h4>
         <p><strong>Lifetime Income:</strong> ${totalIncome.toFixed(2)}</p>
         <p><strong>Lifetime Expenses:</strong> ${totalExpense.toFixed(2)}</p>
