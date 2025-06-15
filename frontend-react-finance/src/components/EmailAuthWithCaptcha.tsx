@@ -75,7 +75,7 @@ const EmailAuthWithCaptcha: React.FC = () => {
       />
 
       <HCaptcha
-        sitekey="YOUR_PUBLIC_SITE_KEY"
+        sitekey="2c02d91c-a64a-4124-85b0-d1cc928898e4" // replace with your actual sitekey
         onVerify={(token) => setCaptchaToken(token)}
         ref={captchaRef}
       />
