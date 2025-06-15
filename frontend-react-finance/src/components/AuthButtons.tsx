@@ -2,10 +2,10 @@ import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
 import { supabase } from '../supabaseClient';
 import HCaptcha from '@hcaptcha/react-hcaptcha';
-import React, { useRef, useState } from 'react';
+import { useRef } from 'react';
 
 const AuthButtons = () => {
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  // Removed unused captchaToken state
   const captchaRef = useRef<HCaptcha>(null);
 
   return (
@@ -19,7 +19,7 @@ const AuthButtons = () => {
 
       <HCaptcha
         sitekey="2c02d91c-a64a-4124-85b0-d1cc928898e4" // replace with your actual sitekey
-        onVerify={(token: string) => setCaptchaToken(token)}
+        onVerify={() => {}}
         ref={captchaRef}
       />
     </>
