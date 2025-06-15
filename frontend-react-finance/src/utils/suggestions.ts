@@ -21,5 +21,6 @@ export async function getFinancialAdvice(latest: any) {
     messages: [{ role: 'user', content: input }],
   });
 
+  console.log('GPT Response:', response.choices[0]?.message?.content);
   return response.choices[0]?.message?.content || '';
 }
