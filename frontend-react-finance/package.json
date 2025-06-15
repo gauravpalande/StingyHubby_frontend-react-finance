@@ -16,7 +16,6 @@
     "@supabase/supabase-js": "^2.50.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "react-hcaptcha": "^0.1.1",
     "recharts": "^2.15.3"
   },
   "devDependencies": {
