@@ -16,6 +16,7 @@ export async function getFinancialAdvice(latest: any) {
     Respond in simple, user-friendly language.
   `;
 
+  try {
   const response = await openai.chat.completions.create({
     model: 'gpt-3.5-turbo',
     messages: [{ role: 'user', content: input }],
@@ -23,4 +24,8 @@ export async function getFinancialAdvice(latest: any) {
 
   console.log('GPT Response:', response.choices[0]?.message?.content);
   return response.choices[0]?.message?.content || '';
+  } catch (error: any) {
+  console.error('GPT Error:', error.message || error);
+  return '⚠️ GPT is temporarily unavailable. Please try again later.';
+}
 }
