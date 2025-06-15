@@ -17,6 +17,18 @@ const App: React.FC = () => {
     setLoading(false);
   }, []);
 
+  // ✅ Dynamic page title based on session
+  useEffect(() => {
+    if (session?.user?.email) {
+      const name =
+        session.user.user_metadata?.full_name ||
+        session.user.email.split('@')[0];
+      document.title = `Welcome ${name} – StingyHubby`;
+    } else {
+      document.title = 'StingyHubby';
+    }
+  }, [session]);
+
   if (loading) return <div>Loading...</div>;
 
   return (
