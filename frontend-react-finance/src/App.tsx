@@ -4,7 +4,6 @@ import banner from './assets/stingy-hubby-banner.png';
 import { useSession, useSupabaseClient } from '@supabase/auth-helpers-react';
 import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
-import AuthButtons from './components/AuthButtons';
 import FinanceForm from './components/FinanceForm';
 import SignOutButton from './components/SignOutButton';
 import EmailAuthWithCaptcha from './components/EmailAuthWithCaptcha'; // make sure path is correct
