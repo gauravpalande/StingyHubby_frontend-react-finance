@@ -23,8 +23,21 @@ const HomePage: React.FC = () => {
 
       {session ? (
         <>
-          <h2>Welcome, {session.user.email}!</h2><button onClick={handleLogout}>Sign Out</button>
-          <button onClick={() => navigate('/app')}>Go to Dashboard</button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}>
+            <h2 style={{ width: '100%', margin: 0, textAlign: 'center' }}>Welcome, {session.user.email}!</h2>
+            <button
+                style={{ width: '100%', padding: '10px 0' }}
+                onClick={handleLogout}
+            >
+                Sign Out
+            </button>
+            <button
+                style={{ width: '100%', padding: '10px 0' }}
+                onClick={() => navigate('/app')}
+            >
+                Go to Dashboard
+            </button>
+        </div>
         </>
       ) : (
         <>
