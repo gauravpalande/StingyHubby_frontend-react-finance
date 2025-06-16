@@ -8,6 +8,8 @@ import HomePage from './pages/HomePage';
 import AboutPage from './pages/AboutPage'; // <-- add this import
 import UpdateFinancesPage from './pages/UpdateFinancesPage'; // ✅ NEW
 import FinancialHistoryWrapper from './components/FinancialHistoryWrapper'; // ✅ NEW
+import FinanceBreakdownPage from './pages/FinanceBreakdownPage'; // ✅ NEW
+import GPTSuggestionPage from './pages/GPTSuggestionsPage'; // ✅ NEW
 
 
 const App: React.FC = () => {
@@ -21,6 +23,8 @@ const App: React.FC = () => {
           <Route path="/app" element={<SidebarLayout />}>
             <Route path="update" element={<UpdateFinancesPage />} />
             <Route path="History" element={<FinancialHistoryWrapper />} />
+            <Route path="Breakdown" element={<FinanceBreakdownPage/>} />
+            <Route path="Suggestions" element={<GPTSuggestionPage/>} />
             <Route path="about" element={<AboutPage />} />
             <Route index element={<FinanceForm />} />
             {/* More routes inside app layout if needed */}
