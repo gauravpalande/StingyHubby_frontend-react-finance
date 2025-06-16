@@ -154,34 +154,36 @@ const FinanceForm: React.FC = () => {
         <h3 style={{ marginBottom: 16 }}>📊 Financial Summary</h3>
         <div style={{ display: 'flex', gap: 32 }}>
           <div style={{ flex: 1 }}>
-        <h4>Lifetime Summary</h4>
-        <p><strong>Lifetime Income:</strong> ${totalIncome.toFixed(2)}</p>
-        <p><strong>Lifetime Expenses:</strong> ${totalExpense.toFixed(2)}</p>
-        <p><strong>Lifetime Savings:</strong> ${savings.toFixed(2)}</p>
-        <p><strong>Lifetime Monthly Savings %:</strong> {savingsPercent}%</p>
+            <h4>Lifetime Summary</h4>
+            <p><strong>Lifetime Income:</strong> ${totalIncome.toFixed(2)}</p>
+            <p><strong>Lifetime Expenses:</strong> ${totalExpense.toFixed(2)}</p>
+            <p><strong>Lifetime Savings:</strong> ${savings.toFixed(2)}</p>
+            <p><strong>Lifetime Monthly Savings %:</strong> {savingsPercent}%</p>
           </div>
           {latest && (
-        <div style={{ flex: 1 }}>
-          <h4>Latest Submission</h4>
-          <p><strong>Latest Income:</strong> ${latestIncome.toFixed(2)}</p>
-          <p><strong>Latest Expenses:</strong> ${latestExpense.toFixed(2)}</p>
-          <p><strong>Latest Savings:</strong> ${latestSavings.toFixed(2)}</p>
-          <p><strong>Latest Savings %:</strong> {latestSavingsPercent}%</p>
-        </div>
+            <div style={{ flex: 1 }}>
+              <h4>Latest Submission</h4>
+              <p><strong>Latest Income:</strong> ${latestIncome.toFixed(2)}</p>
+              <p><strong>Latest Expenses:</strong> ${latestExpense.toFixed(2)}</p>
+              <p><strong>Latest Savings:</strong> ${latestSavings.toFixed(2)}</p>
+              <p><strong>Latest Savings %:</strong> {latestSavingsPercent}%</p>
+            </div>
           )}
         </div>
+        {advice && (
+          <div style={{ marginTop: 24 }}>
+            <h4>🧠 GPT Advice</h4>
+            <p>{advice}</p>
+          </div>
+        )}
       </div>
-      {advice && (
-        <div style={{ marginTop: 24, padding: 16, backgroundColor: '#e5e7eb', borderRadius: 8 }}>
-          <h3 style={{ marginBottom: 16 }}>🧠 StingyHubby Advice</h3>
-          <ul>
-        {advice.split('\n').filter(Boolean).map((item, idx) => (
-          <li key={idx}>{item}</li>
-        ))}
-          </ul>
-        </div>
-      )}
-    </div>
+        {latest?.suggestion && (
+          <div style={{ marginTop: 24, padding: 16, backgroundColor: '#fff0f0', borderRadius: 8 }}>
+            <h4>💡 GPT Suggestion</h4>
+            <p>{latest.suggestion}</p>
+          </div>
+        )}
+      </div>
   );
 };
 
