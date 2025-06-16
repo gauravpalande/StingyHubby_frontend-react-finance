@@ -1,42 +1,46 @@
-import { useEffect, useState } from 'react';
-import ExpenseBreakdownChart from '../components/ExpenseBreakdownChart';
+import { PieChart, Pie, Cell } from 'recharts';
 
-// Mock function to fetch finance data for the logged-in user
-// Replace this with your actual API call
-const fetchFinanceData = async () => {
-    // Example response structure
-    return {
-        mortgage: 1200,
-        utilities: 300,
-        creditCards: 500,
-        carPayments: 400,
-    };
-};
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
-const FinanceBreakdownPage = () => {
-    const [data, setData] = useState<
-        { name: string; value: number }[]
-    >([]);
+type DataItem = { name: string; value: number };
+type Props = { data: DataItem[] };
 
-    useEffect(() => {
-        const getData = async () => {
-            const res = await fetchFinanceData();
-            setData([
-                { name: 'Mortgage', value: res.mortgage },
-                { name: 'Utilities', value: res.utilities },
-                { name: 'Credit Cards', value: res.creditCards },
-                { name: 'Car Payments', value: res.carPayments },
-            ]);
-        };
-        getData();
-    }, []);
+const ExpenseBreakdownChart = ({ data }: Props) => (
+    <div style={{ display: 'flex', alignItems: 'center' }}>
+        <PieChart width={300} height={300}>
+            <Pie
+                data={data}
+                cx={150}
+                cy={150}
+                innerRadius={60}
+                outerRadius={100}
+                fill="#8884d8"
+                dataKey="value"
+                label
+            >
+                {data.map((_, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+            </Pie>
+        </PieChart>
+        <ul style={{ listStyle: 'none', marginLeft: 24 }}>
+            {data.map((entry, index) => (
+                <li key={entry.name} style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
+                    <span
+                        style={{
+                            display: 'inline-block',
+                            width: 16,
+                            height: 16,
+                            backgroundColor: COLORS[index % COLORS.length],
+                            marginRight: 8,
+                            borderRadius: 4,
+                        }}
+                    />
+                    {entry.name}: ${entry.value}
+                </li>
+            ))}
+        </ul>
+    </div>
+);
 
-    return (
-        <div>
-            <h2>Breakdown Expenses</h2>
-            <ExpenseBreakdownChart data={data} />
-        </div>
-    );
-};
-
-export default FinanceBreakdownPage;
+export default ExpenseBreakdownChart;

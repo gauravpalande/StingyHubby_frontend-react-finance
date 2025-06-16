@@ -23,7 +23,7 @@ const App: React.FC = () => {
           <Route path="/app" element={<SidebarLayout />}>
             <Route path="update" element={<UpdateFinancesPage />} />
             <Route path="history" element={<FinancialHistoryWrapper />} />
-            <Route path="breakdown" element={<FinanceBreakdownPage/>} />
+            <Route path="breakdown" element={<FinanceBreakdownPage data={[]} />} />
             <Route path="suggestions" element={<GPTSuggestionPage/>} />
             <Route path="about" element={<AboutPage />} />
             <Route index element={<FinanceForm />} />
