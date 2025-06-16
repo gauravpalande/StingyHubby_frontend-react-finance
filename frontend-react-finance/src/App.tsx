@@ -4,23 +4,21 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { useSession } from '@supabase/auth-helpers-react';
 import SidebarLayout from './components/SidebarLayout';
 import FinanceForm from './components/FinanceForm';
-import AboutPage from './pages/AboutPage'; // create this page
-import AuthSection from './components/AuthSection'; // wrap auth UI here
+import HomePage from './pages/HomePage';
 
 const App: React.FC = () => {
   const session = useSession();
 
-  if (!session) {
-    return <AuthSection />;
-  }
-
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<SidebarLayout />}>
-          <Route index element={<FinanceForm />} />
-          <Route path="about" element={<AboutPage />} />
-        </Route>
+        <Route path="/" element={<HomePage />} />
+        {session && (
+          <Route path="/app" element={<SidebarLayout />}>
+            <Route index element={<FinanceForm />} />
+            {/* More routes inside app layout if needed */}
+          </Route>
+        )}
       </Routes>
     </Router>
   );
