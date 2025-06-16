@@ -3,9 +3,12 @@ import React from 'react';
 
 const AboutPage: React.FC = () => {
   return (
-    <div>
-      <h2>About StingyHubby</h2>
-      <p>This is a financial insight tool powered by GPT.</p>
+    <div style={{ padding: 24 }}>
+      <h1>About StingyHubby</h1>
+      <p>
+        StingyHubby helps you manage your personal finances by tracking income and expenses,
+        offering GPT-powered advice, and visualizing your financial history.
+      </p>
     </div>
   );
 };

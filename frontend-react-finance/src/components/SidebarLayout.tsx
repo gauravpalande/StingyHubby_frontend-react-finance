@@ -18,7 +18,7 @@ const SidebarLayout: React.FC = () => {
           fontWeight: isActive ? 'bold' : 'normal',
           color: isActive ? '#007bff' : 'black'
         })}>
-          💰 Finance Form
+          🏠 Home
         </NavLink>
         <NavLink to="/about" style={({ isActive }) => ({
           fontWeight: isActive ? 'bold' : 'normal',

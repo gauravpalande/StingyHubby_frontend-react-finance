@@ -5,6 +5,7 @@ import { useSession } from '@supabase/auth-helpers-react';
 import SidebarLayout from './components/SidebarLayout';
 import FinanceForm from './components/FinanceForm';
 import HomePage from './pages/HomePage';
+import AboutPage from './pages/AboutPage'; // <-- add this import
 
 const App: React.FC = () => {
   const session = useSession();
@@ -16,6 +17,7 @@ const App: React.FC = () => {
         {session && (
           <Route path="/app" element={<SidebarLayout />}>
             <Route index element={<FinanceForm />} />
+            <Route path="/about" element={<AboutPage />} />
             {/* More routes inside app layout if needed */}
           </Route>
         )}
