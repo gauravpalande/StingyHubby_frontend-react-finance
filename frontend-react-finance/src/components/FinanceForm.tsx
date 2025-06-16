@@ -66,7 +66,7 @@ const FinanceForm: React.FC = () => {
     // 2. Prepare payload with suggestion
   const payload = {
     ...data,
-    suggestion,
+    suggestion: suggestion,
     user_id: user.id,
   };
 
