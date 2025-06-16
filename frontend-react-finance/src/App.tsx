@@ -16,8 +16,8 @@ const App: React.FC = () => {
         <Route path="/" element={<HomePage />} />
         {session && (
           <Route path="/app" element={<SidebarLayout />}>
+            <Route path="about" element={<AboutPage />} />
             <Route index element={<FinanceForm />} />
-            <Route path="/about" element={<AboutPage />} />
             {/* More routes inside app layout if needed */}
           </Route>
         )}
