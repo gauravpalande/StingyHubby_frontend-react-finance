@@ -4,7 +4,7 @@ const UpdateFinancesPage = () => {
   return (
     <div>
       <h2>Breakdown Expenses</h2>
-      <ExpenseBreakdownChart data={[]} />
+      <ExpenseBreakdownChart />
     </div>
   );
 };
