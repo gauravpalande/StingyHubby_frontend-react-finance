@@ -59,26 +59,38 @@ const FinanceForm: React.FC = () => {
   const onSubmit = async (data: FormData) => {
     if (!user) return;
 
-    const payload = { ...data, user_id: user.id };
+      // 1. Get GPT-powered suggestion
+  const generatedAdvice = await getFinancialAdvice(data);
 
+
+    // 2. Prepare payload with suggestion
+  const payload = {
+    ...data,
+    generatedAdvice,
+    user_id: user.id,
+  };
+
+    // 3. Insert data into Supabase
     const { error } = await supabase.from('submissions').insert([payload]);
     if (!error) {
       reset();
-      const { data: updated } = await supabase
-        .from('submissions')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: true });
 
-      if (updated) {
+      // 4. Re-Fetch updated history
+      const { data: updated, error: fetchError } = await supabase
+      .from('submissions')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: true });
+
+      if (!fetchError && updated) {
         const updatedHistory = updated.map((d: any) => ({
           ...d,
           timestamp: new Date(d.created_at).toLocaleDateString(),
         }));
         setHistory(updatedHistory);
-        const latestEntry = updatedHistory[updatedHistory.length - 1];
-        const generatedAdvice = await getFinancialAdvice(latestEntry);
         setAdvice(generatedAdvice);
+      } else {
+        console.error('Error fetching updated history:', fetchError);
       }
     }
   };
