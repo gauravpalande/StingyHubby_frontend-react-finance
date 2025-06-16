@@ -93,6 +93,9 @@ const FinanceForm: React.FC = () => {
         console.error('Error fetching updated history:', fetchError);
       }
     }
+    else {
+      console.error('Error inserting data:', error);
+    }
   };
 
   return (
