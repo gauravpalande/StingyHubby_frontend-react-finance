@@ -18,7 +18,7 @@ const GPTSuggestionPage = () => {
             }
             // Fetch latest suggestion for user
             const { data, error } = await supabase
-                .from('suggestions')
+                .from('submissions')
                 .select('suggestion')
                 .eq('user_id', user.id)
                 .order('created_at', { ascending: false })
