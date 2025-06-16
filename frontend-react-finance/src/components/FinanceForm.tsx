@@ -60,13 +60,13 @@ const FinanceForm: React.FC = () => {
     if (!user) return;
 
       // 1. Get GPT-powered suggestion
-  const generatedAdvice = await getFinancialAdvice(data);
+  const suggestion = await getFinancialAdvice(data);
 
 
     // 2. Prepare payload with suggestion
   const payload = {
     ...data,
-    generatedAdvice,
+    suggestion,
     user_id: user.id,
   };
 
@@ -88,7 +88,7 @@ const FinanceForm: React.FC = () => {
           timestamp: new Date(d.created_at).toLocaleDateString(),
         }));
         setHistory(updatedHistory);
-        setAdvice(generatedAdvice);
+        setAdvice(suggestion);
       } else {
         console.error('Error fetching updated history:', fetchError);
       }
