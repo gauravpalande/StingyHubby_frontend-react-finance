@@ -7,6 +7,7 @@ import { ThemeSupa } from '@supabase/auth-ui-shared';
 import FinanceForm from './components/FinanceForm';
 import SignOutButton from './components/SignOutButton';
 import EmailAuthWithCaptcha from './components/EmailAuthWithCaptcha'; // make sure path is correct
+import { Analytics } from "@vercel/analytics/react"
 
 const App: React.FC = () => {
   const supabase = useSupabaseClient<any>();
@@ -56,6 +57,7 @@ const App: React.FC = () => {
           <h2>Welcome, {session.user.email}!</h2>
           <SignOutButton />
           <FinanceForm />
+          <Analytics/>
         </>
       )}
     </div>
