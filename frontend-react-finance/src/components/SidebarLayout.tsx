@@ -26,6 +26,12 @@ const SidebarLayout: React.FC = () => {
         })}>
           Update Finance
         </NavLink>
+         <NavLink to="/app/history" style={({ isActive }) => ({
+          fontWeight: isActive ? 'bold' : 'normal',
+          color: isActive ? '#007bff' : 'black'
+        })}>
+          Financial History
+        </NavLink>
         <NavLink to="/app/about" style={({ isActive }) => ({
           fontWeight: isActive ? 'bold' : 'normal',
           color: isActive ? '#007bff' : 'black'

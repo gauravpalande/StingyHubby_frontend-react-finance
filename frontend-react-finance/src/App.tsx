@@ -7,6 +7,8 @@ import FinanceForm from './components/FinanceForm';
 import HomePage from './pages/HomePage';
 import AboutPage from './pages/AboutPage'; // <-- add this import
 import UpdateFinancesPage from './pages/UpdateFinancesPage'; // ✅ NEW
+import FinancialHistoryWrapper from './components/FinancialHistoryWrapper'; // ✅ NEW
+
 
 const App: React.FC = () => {
   const session = useSession();
@@ -18,6 +20,7 @@ const App: React.FC = () => {
         {session && (
           <Route path="/app" element={<SidebarLayout />}>
             <Route path="update" element={<UpdateFinancesPage />} />
+            <Route path="History" element={<FinancialHistoryWrapper />} />
             <Route path="about" element={<AboutPage />} />
             <Route index element={<FinanceForm />} />
             {/* More routes inside app layout if needed */}
