@@ -23,10 +23,8 @@ const HomePage: React.FC = () => {
 
       {session ? (
         <>
-          <h2>Welcome, {session.user.email}!</h2>
+          <h2>Welcome, {session.user.email}!</h2><button onClick={handleLogout}>Sign Out</button>
           <button onClick={() => navigate('/app')}>Go to Dashboard</button>
-          <br />
-          <button onClick={handleLogout}>Sign Out</button>
         </>
       ) : (
         <>
