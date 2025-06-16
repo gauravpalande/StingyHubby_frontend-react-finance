@@ -1,45 +1,40 @@
-import React, { useEffect, useState } from 'react';
-import { supabase } from '../supabaseClient'; // Adjust path as needed
-import ExpenseBreakdownChart from './ExpenseBreakdownChart';
+import React from 'react';
+import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 
 interface ExpenseData {
-    name: string;
-    value: number;
+  name: string;
+  value: number;
 }
 
-const ExpenseBreakdownContainer: React.FC = () => {
-    const [, setData] = useState<ExpenseData[]>([]);
+interface Props {
+  data: ExpenseData[];
+}
 
-    useEffect(() => {
-        const fetchData = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28'];
 
-            const { data: expenses, error } = await supabase
-                .from('expenses')
-                .select('mortgage, utilities, creditCards, carPayments')
-                .eq('user_id', user.id)
-                .order('created_at', { ascending: false })
-                .limit(1)
-                .single();
-
-            if (error || !expenses) return;
-
-            const { mortgage, utilities, creditCards, carPayments } = expenses;
-            setData([
-                { name: 'Mortgage', value: mortgage },
-                { name: 'Utilities', value: utilities },
-                { name: 'Credit Cards', value: creditCards },
-                { name: 'Car Payments', value: carPayments },
-            ]);
-        };
-
-        fetchData();
-    }, []);
-
-    return (
-        <ExpenseBreakdownChart />
-    );
+const ExpenseBreakdownChart: React.FC<Props> = ({ data }) => {
+  return (
+    <div style={{ marginTop: 40 }}>
+      <h3>Expense Breakdown</h3>
+      <ResponsiveContainer width="100%" height={300}>
+        <PieChart>
+          <Pie
+            data={data}
+            dataKey="value"
+            nameKey="name"
+            cx="50%"
+            cy="50%"
+            outerRadius={100}
+            label
+          >
+            {data.map((_, index) => (
+              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+            ))}
+          </Pie>
+        </PieChart>
+      </ResponsiveContainer>
+    </div>
+  );
 };
 
-export default ExpenseBreakdownContainer;
+export default ExpenseBreakdownChart;
