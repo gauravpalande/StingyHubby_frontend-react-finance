@@ -9,7 +9,7 @@ import AboutPage from './pages/AboutPage'; // <-- add this import
 import UpdateFinancesPage from './pages/UpdateFinancesPage'; // ✅ NEW
 import FinancialHistoryWrapper from './components/FinancialHistoryWrapper'; // ✅ NEW
 import FinanceBreakdownPage from './pages/FinanceBreakdownPage'; // ✅ NEW
-import GPTSuggestionPage from './pages/GPTSuggestionsPage'; // ✅ NEW
+import GPTSuggestionPage from './pages/GPTSuggestionPage'; // ✅ NEW
 
 
 const App: React.FC = () => {
