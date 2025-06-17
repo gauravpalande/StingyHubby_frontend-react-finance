@@ -1,12 +1,17 @@
-// src/components/SidebarLayout.tsx
 import React from 'react';
+import type { ReactNode } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 
-const SidebarLayout: React.FC = () => {
+interface SidebarLayoutProps {
+  children?: ReactNode;
+  sidebarWidth?: number;
+}
+
+const SidebarLayout: React.FC<SidebarLayoutProps> = ({ children, sidebarWidth = 200 }) => {
   return (
     <div style={{ display: 'flex', height: '100vh' }}>
       <nav style={{
-        width: 200,
+        width: sidebarWidth,
         background: '#f8f9fa',
         padding: '16px',
         display: 'flex',
@@ -20,13 +25,13 @@ const SidebarLayout: React.FC = () => {
         })}>
           🏠 Home
         </NavLink>
-         <NavLink to="/app/update" style={({ isActive }) => ({
+        <NavLink to="/app/update" style={({ isActive }) => ({
           fontWeight: isActive ? 'bold' : 'normal',
           color: isActive ? '#007bff' : 'black'
         })}>
           Update Finance
         </NavLink>
-         <NavLink to="/app/history" style={({ isActive }) => ({
+        <NavLink to="/app/history" style={({ isActive }) => ({
           fontWeight: isActive ? 'bold' : 'normal',
           color: isActive ? '#007bff' : 'black'
         })}>
@@ -42,7 +47,7 @@ const SidebarLayout: React.FC = () => {
           fontWeight: isActive ? 'bold' : 'normal',
           color: isActive ? '#007bff' : 'black'
         })}>
-            GPT Suggestions
+          GPT Suggestions
         </NavLink>
         <NavLink to="/app/about" style={({ isActive }) => ({
           fontWeight: isActive ? 'bold' : 'normal',
@@ -50,11 +55,10 @@ const SidebarLayout: React.FC = () => {
         })}>
           📘 About
         </NavLink>
-        {/* Add more links here */}
       </nav>
 
       <main style={{ flex: 1, padding: '24px', overflowY: 'auto' }}>
-        <Outlet />
+        {children ?? <Outlet />}
       </main>
     </div>
   );

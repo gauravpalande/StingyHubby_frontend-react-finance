@@ -5,35 +5,9 @@ import { useSession, useSupabaseClient } from '@supabase/auth-helpers-react';
 import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
 import EmailAuthWithCaptcha from '../components/EmailAuthWithCaptcha';
+import SidebarLayout from '../components/SidebarLayout'; // Import SidebarLayout
 
 const sidebarWidth = 220;
-
-const Sidebar: React.FC = () => (
-  <aside
-    style={{
-      width: sidebarWidth,
-      background: '#f5f5f5',
-      height: '100vh',
-      position: 'fixed',
-      left: 0,
-      top: 0,
-      padding: '32px 16px',
-      boxSizing: 'border-box',
-      borderRight: '1px solid #e0e0e0',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 24,
-    }}
-  >
-    <h2 style={{ margin: 0, fontSize: 22 }}>StingyHubby</h2>
-    <nav style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <a href="/" style={{ color: '#333', textDecoration: 'none' }}>Home</a>
-      <a href="/dashboard" style={{ color: '#333', textDecoration: 'none' }}>Dashboard</a>
-      <a href="/profile" style={{ color: '#333', textDecoration: 'none' }}>Profile</a>
-      {/* Add more links as needed */}
-    </nav>
-  </aside>
-);
 
 const HomePage: React.FC = () => {
   const supabase = useSupabaseClient();
@@ -45,8 +19,7 @@ const HomePage: React.FC = () => {
   };
 
   return (
-    <div style={{ display: 'flex' }}>
-      <Sidebar />
+    <SidebarLayout sidebarWidth={sidebarWidth}>
       <main
         style={{
           marginLeft: sidebarWidth,
@@ -82,7 +55,7 @@ const HomePage: React.FC = () => {
           </>
         )}
       </main>
-    </div>
+    </SidebarLayout>
   );
 };
 
