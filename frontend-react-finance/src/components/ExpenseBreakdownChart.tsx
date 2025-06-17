@@ -25,7 +25,11 @@ const ExpenseBreakdownChart: React.FC<Props> = ({ data }) => {
             cx="50%"
             cy="50%"
             outerRadius={200}
-            label={({ name }) => name}
+            label={({ name, value }) => {
+              const total = data.reduce((sum, entry) => sum + entry.value, 0);
+              const percent = total ? ((value / total) * 100).toFixed(1) : 0;
+              return `${name} (${percent}%)`;
+            }}
           >
             {data.map((_, index) => (
               <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
