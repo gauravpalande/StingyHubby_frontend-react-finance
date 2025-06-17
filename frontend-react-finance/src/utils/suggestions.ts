@@ -12,7 +12,7 @@ export async function getFinancialAdvice(latest: any) {
     - Retirement: ${latest.retirement}
     - Credit Cards: ${latest.creditCards}
 
-    Please give me one short-term and one long-term, actionable financial suggestion, based on https://imgur.com/personal-income-spending-flowchart-united-states-lSoUQr2 and common personal finance advice.
+    Please give me one very detailed short-term and one very detailed long-term, actionable financial suggestion, based on https://imgur.com/personal-income-spending-flowchart-united-states-lSoUQr2 and common personal finance advice.
     Respond in simple, user-friendly language.
   `;
 
