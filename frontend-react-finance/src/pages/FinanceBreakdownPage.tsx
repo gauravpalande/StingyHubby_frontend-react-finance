@@ -1,46 +1,55 @@
-import { PieChart, Pie, Cell } from 'recharts';
+// src/pages/FinanceBreakdownPage.tsx
+import { useEffect, useState } from 'react';
+import { supabase } from '../supabaseClient';
+import ExpenseBreakdownChart from '../components/ExpenseBreakdownChart';
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
+const FinanceBreakdownPage = () => {
+  const [data, setData] = useState<{ name: string; value: number }[]>([]);
+  const [loading, setLoading] = useState(true);
 
-type DataItem = { name: string; value: number };
-type Props = { data: DataItem[] };
+  useEffect(() => {
+    const fetchBreakdown = async () => {
+      setLoading(true);
 
-const ExpenseBreakdownChart = ({ data }: Props) => (
-    <div style={{ display: 'flex', alignItems: 'center' }}>
-        <PieChart width={300} height={300}>
-            <Pie
-                data={data}
-                cx={150}
-                cy={150}
-                innerRadius={60}
-                outerRadius={100}
-                fill="#8884d8"
-                dataKey="value"
-                label
-            >
-                {data.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                ))}
-            </Pie>
-        </PieChart>
-        <ul style={{ listStyle: 'none', marginLeft: 24 }}>
-            {data.map((entry, index) => (
-                <li key={entry.name} style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
-                    <span
-                        style={{
-                            display: 'inline-block',
-                            width: 16,
-                            height: 16,
-                            backgroundColor: COLORS[index % COLORS.length],
-                            marginRight: 8,
-                            borderRadius: 4,
-                        }}
-                    />
-                    {entry.name}: ${entry.value}
-                </li>
-            ))}
-        </ul>
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setData([]);
+        setLoading(false);
+        return;
+      }
+
+      const { data: latest, error } = await supabase
+        .from('submissions')
+        .select('mortgage, carPayments, utilities')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (error || !latest) {
+        setData([]);
+      } else {
+        type BreakdownKey = 'mortgage' | 'carPayments' | 'utilities';
+        const keys: BreakdownKey[] = ['mortgage', 'carPayments', 'utilities'];
+        const breakdown = keys.map((key) => ({
+          name: key.charAt(0).toUpperCase() + key.slice(1),
+          value: latest[key] || 0,
+        }));
+        setData(breakdown);
+      }
+
+      setLoading(false);
+    };
+
+    fetchBreakdown();
+  }, []);
+
+  return (
+    <div>
+      <h2>📊 Expense Breakdown</h2>
+      {loading ? <p>Loading...</p> : <ExpenseBreakdownChart data={data} />}
     </div>
-);
+  );
+};
 
-export default ExpenseBreakdownChart;
+export default FinanceBreakdownPage;
