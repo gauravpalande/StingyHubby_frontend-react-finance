@@ -1,16 +1,14 @@
 // src/pages/FinanceBreakdownPage.tsx
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
 import ExpenseBreakdownChart from '../components/ExpenseBreakdownChart';
 
-const FinanceBreakdownPage = () => {
+const FinanceBreakdownPage: React.FC = () => {
   const [data, setData] = useState<{ name: string; value: number }[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchBreakdown = async () => {
-      setLoading(true);
-
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         setData([]);
@@ -26,16 +24,14 @@ const FinanceBreakdownPage = () => {
         .limit(1)
         .single();
 
-      if (error || !latest) {
-        setData([]);
-      } else {
-        type BreakdownKey = 'mortgage' | 'carPayments' | 'utilities';
-        const keys: BreakdownKey[] = ['mortgage', 'carPayments', 'utilities'];
-        const breakdown = keys.map((key) => ({
+      if (!error && latest) {
+        const breakdown = ['mortgage', 'carPayments', 'utilities'].map((key) => ({
           name: key.charAt(0).toUpperCase() + key.slice(1),
-          value: latest[key] || 0,
+          value: latest[key as keyof typeof latest] || 0,
         }));
         setData(breakdown);
+      } else {
+        setData([]);
       }
 
       setLoading(false);
