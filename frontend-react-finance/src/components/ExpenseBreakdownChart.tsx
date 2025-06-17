@@ -16,7 +16,7 @@ const ExpenseBreakdownChart: React.FC<Props> = ({ data }) => {
   return (
     <div style={{ marginTop: 40 }}>
       <h3>Expense Breakdown</h3>
-      <ResponsiveContainer width="100%" height={300}>
+      <ResponsiveContainer width="100%" height={600}>
         <PieChart>
           <Pie
             data={data}
@@ -24,7 +24,7 @@ const ExpenseBreakdownChart: React.FC<Props> = ({ data }) => {
             nameKey="name"
             cx="50%"
             cy="50%"
-            outerRadius={1000}
+            outerRadius={100}
             label
           >
             {data.map((_, index) => (
