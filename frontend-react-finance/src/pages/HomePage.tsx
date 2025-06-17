@@ -7,7 +7,7 @@ import { ThemeSupa } from '@supabase/auth-ui-shared';
 import EmailAuthWithCaptcha from '../components/EmailAuthWithCaptcha';
 import SidebarLayout from '../components/SidebarLayout'; // Import SidebarLayout
 
-const sidebarWidth = 220;
+const sidebarWidth = 150;
 
 const HomePage: React.FC = () => {
   const supabase = useSupabaseClient();
