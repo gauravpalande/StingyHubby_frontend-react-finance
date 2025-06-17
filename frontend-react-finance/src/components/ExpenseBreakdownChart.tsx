@@ -25,7 +25,7 @@ const ExpenseBreakdownChart: React.FC<Props> = ({ data }) => {
             cx="50%"
             cy="50%"
             outerRadius={200}
-            label
+            label={({ name }) => name}
           >
             {data.map((_, index) => (
               <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
