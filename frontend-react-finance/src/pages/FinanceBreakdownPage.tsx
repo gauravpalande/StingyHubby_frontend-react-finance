@@ -18,14 +18,14 @@ const FinanceBreakdownPage: React.FC = () => {
 
       const { data: latest, error } = await supabase
         .from('submissions')
-        .select('mortgage, carPayments, utilities')
+        .select('mortgage, carPayments, utilities, creditCards')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(1)
         .single();
 
       if (!error && latest) {
-        const breakdown = ['mortgage', 'carPayments', 'utilities'].map((key) => ({
+        const breakdown = ['mortgage', 'carPayments', 'utilities', 'creditCards'].map((key) => ({
           name: key.charAt(0).toUpperCase() + key.slice(1),
           value: latest[key as keyof typeof latest] || 0,
         }));
