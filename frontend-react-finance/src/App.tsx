@@ -3,13 +3,13 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { useSession } from '@supabase/auth-helpers-react';
 import SidebarLayout from './components/SidebarLayout';
+import FinanceForm from './components/FinanceForm';
 import HomePage from './pages/HomePage';
 import AboutPage from './pages/AboutPage'; // <-- add this import
 import UpdateFinancesPage from './pages/UpdateFinancesPage'; // ✅ NEW
 import FinancialHistoryWrapper from './components/FinancialHistoryWrapper'; // ✅ NEW
 import FinanceBreakdownPage from './pages/FinanceBreakdownPage'; // ✅ NEW
 import GPTSuggestionPage from './pages/GPTSuggestionPage'; // ✅ NEW
-import Dashboard from './pages/Dashboard';
 
 
 const App: React.FC = () => {
@@ -26,7 +26,7 @@ const App: React.FC = () => {
             <Route path="breakdown" element={<FinanceBreakdownPage />} />
             <Route path="suggestions" element={<GPTSuggestionPage/>} />
             <Route path="about" element={<AboutPage />} />
-            <Route index element={<Dashboard />} />
+            <Route index element={<FinanceForm />} />
             {/* More routes inside app layout if needed */}
           </Route>
         )}

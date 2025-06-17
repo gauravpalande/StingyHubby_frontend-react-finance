@@ -5,12 +5,10 @@ import { useSession, useSupabaseClient } from '@supabase/auth-helpers-react';
 import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
 import EmailAuthWithCaptcha from '../components/EmailAuthWithCaptcha';
-import { useNavigate } from 'react-router-dom';
 
 const HomePage: React.FC = () => {
   const supabase = useSupabaseClient();
   const session = useSession();
-  const navigate = useNavigate();
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -30,12 +28,6 @@ const HomePage: React.FC = () => {
                 onClick={handleLogout}
             >
                 Sign Out
-            </button>
-            <button
-                style={{ width: '100%', padding: '10px 0' }}
-                onClick={() => navigate('/app')}
-            >
-                Go to Dashboard
             </button>
         </div>
         </>
