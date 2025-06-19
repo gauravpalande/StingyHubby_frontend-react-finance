@@ -86,7 +86,7 @@ Stay stingy. Stay smart.
 
       try {
         await resend.emails.send({
-          from: 'digest@stingyhubby.com',
+  from: 'digest@stingyhubby.xyz',
           to: email,
           subject: 'Your Weekly Financial Digest',
           text: summaryText,
