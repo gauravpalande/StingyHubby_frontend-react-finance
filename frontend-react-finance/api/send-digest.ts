@@ -1,12 +1,14 @@
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+// ... previous imports and setup remain unchanged
+
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
-import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-const resend = new Resend(process.env.RESEND_API_KEY!);
+const supabaseUrl = process.env.SUPABASE_URL as string;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY as string;
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+const resend = new Resend(process.env.RESEND_API_KEY as string);
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   console.log("📩 Digest handler started");
@@ -63,6 +65,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         continue;
       }
 
+      // Fetch latest suggestion for the user
+      const { data: suggestionData, error: suggestionError } = await supabase
+        .from('suggestions')
+        .select('suggestion')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      let latestSuggestion = '';
+      if (suggestionError) {
+        console.warn(`⚠️ Could not fetch suggestion for ${email}:`, suggestionError.message);
+      } else if (suggestionData && suggestionData.suggestion) {
+        latestSuggestion = suggestionData.suggestion;
+      }
+
       const totalIncome = history.reduce((sum, row) => sum + (row.income || 0), 0);
       const totalExpenses = history.reduce(
         (sum, row) =>
@@ -80,13 +98,13 @@ Here's your weekly financial digest from StingyHubby:
 💸 Total Expenses: $${totalExpenses.toFixed(2)}
 💰 Estimated Savings: $${savings.toFixed(2)}
 
-Stay stingy. Stay smart.
+${latestSuggestion ? `💡 Latest Suggestion: ${latestSuggestion}\n` : ''}Stay stingy. Stay smart.
 — StingyHubby Team
       `.trim();
 
       try {
         await resend.emails.send({
-  from: 'digest@stingyhubby.xyz',
+          from: 'digest@stingyhubby.xyz',
           to: email,
           subject: 'Your Weekly Financial Digest',
           text: summaryText,
