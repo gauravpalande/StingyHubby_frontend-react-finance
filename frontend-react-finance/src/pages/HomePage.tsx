@@ -1,11 +1,11 @@
 // src/pages/HomePage.tsx
-import React from 'react';
+import React, { useEffect } from 'react';
 import banner from '../assets/stingy-hubby-banner.png';
 import { useSession, useSupabaseClient } from '@supabase/auth-helpers-react';
 import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
 import EmailAuthWithCaptcha from '../components/EmailAuthWithCaptcha';
-import SidebarLayout from '../components/SidebarLayout'; // Import SidebarLayout
+import SidebarLayout from '../components/SidebarLayout';
 
 const sidebarWidth = 140;
 
@@ -17,6 +17,33 @@ const HomePage: React.FC = () => {
     await supabase.auth.signOut();
     window.location.href = '/';
   };
+
+  // 🔄 Sync user to Supabase `users` table
+  useEffect(() => {
+    const syncUserToDB = async () => {
+      if (!session?.user) return;
+
+      const { id, email, user_metadata } = session.user;
+      const name = user_metadata?.full_name || user_metadata?.name || null;
+
+      const { error } = await supabase.from('users').upsert(
+        {
+          id,
+          email,
+          name,
+        },
+        { onConflict: 'id' }
+      );
+
+      if (error) {
+        console.error('❌ Failed to sync user:', error.message);
+      } else {
+        console.log('✅ User synced to DB:', email);
+      }
+    };
+
+    syncUserToDB();
+  }, [session, supabase]);
 
   return (
     <SidebarLayout sidebarWidth={sidebarWidth}>
