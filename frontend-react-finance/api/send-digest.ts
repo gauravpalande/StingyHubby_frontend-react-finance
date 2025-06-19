@@ -13,6 +13,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     // ✅ Join submissions with users to fetch email
+    type SubmissionRow = {
+      user_id: string;
+      users: { email: string }[] | { email: string } | null;
+    };
+
     const { data: submissions, error: userError } = await supabase
       .from('submissions')
       .select('user_id, users(email)')
@@ -30,9 +35,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // ✅ Extract unique user_id → email map
     const usersMap = new Map<string, string>();
-    for (const row of submissions) {
+    for (const row of submissions as SubmissionRow[]) {
       const userId = row.user_id;
-      const email = row.users?.email;
+      let email: string | undefined;
+      if (Array.isArray(row.users)) {
+        email = row.users[0]?.email;
+      } else if (row.users && typeof row.users === 'object') {
+        email = row.users.email;
+      }
 
       if (userId && email && !usersMap.has(userId)) {
         usersMap.set(userId, email);
