@@ -67,7 +67,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       // Fetch latest suggestion for the user
       const { data: suggestionData, error: suggestionError } = await supabase
-        .from('suggestions')
+        .from('submissions')
         .select('suggestion')
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
