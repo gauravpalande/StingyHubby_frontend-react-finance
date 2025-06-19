@@ -2,48 +2,67 @@ import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 const resend = new Resend(process.env.RESEND_API_KEY!);
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   console.log("📩 Digest handler started");
 
   try {
-    const { data: users, error: userError } = await supabase
+    // ✅ Join submissions with users to fetch email
+    const { data: submissions, error: userError } = await supabase
       .from('submissions')
-      .select('user_id, email')
-      .neq('email', null);
+      .select('user_id, users(email)')
+      .neq('users.email', null);
 
     if (userError) {
       console.error("❌ Error fetching users:", userError.message);
       return res.status(500).json({ error: userError.message });
     }
 
-    if (!users || users.length === 0) {
+    if (!submissions || submissions.length === 0) {
       console.warn("⚠️ No users found");
       return res.status(200).json({ message: "No users to process" });
     }
 
-    for (const user of users) {
+    // ✅ Extract unique user_id → email map
+    const usersMap = new Map<string, string>();
+    for (const row of submissions) {
+      const userId = row.user_id;
+      const email = row.users?.email;
+
+      if (userId && email && !usersMap.has(userId)) {
+        usersMap.set(userId, email);
+      }
+    }
+
+    // ✅ Send digest to each user
+    for (const [userId, email] of usersMap.entries()) {
       const { data: history, error } = await supabase
         .from('submissions')
         .select('*')
-        .eq('user_id', user.user_id)
+        .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .limit(10);
 
       if (error || !history || history.length === 0) {
-        console.warn(`⚠️ Skipping user ${user.email} due to no data`);
+        console.warn(`⚠️ Skipping user ${email} due to no submission data`);
         continue;
       }
 
       const totalIncome = history.reduce((sum, row) => sum + (row.income || 0), 0);
-      const totalExpenses = history.reduce((sum, row) =>
-        sum + (row.mortgage || 0) + (row.utilities || 0) + (row.carPayments || 0), 0);
+      const totalExpenses = history.reduce(
+        (sum, row) =>
+          sum + (row.mortgage || 0) + (row.utilities || 0) + (row.carPayments || 0),
+        0
+      );
       const savings = totalIncome - totalExpenses;
 
       const summaryText = `
-Hi ${user.email},
+Hi ${email},
 
 Here's your weekly financial digest from StingyHubby:
 
@@ -58,13 +77,13 @@ Stay stingy. Stay smart.
       try {
         await resend.emails.send({
           from: 'digest@stingyhubby.com',
-          to: user.email,
+          to: email,
           subject: 'Your Weekly Financial Digest',
           text: summaryText,
         });
-        console.log(`✅ Sent email to ${user.email}`);
+        console.log(`✅ Sent email to ${email}`);
       } catch (emailError) {
-        console.error(`❌ Failed to send email to ${user.email}:`, emailError);
+        console.error(`❌ Failed to send email to ${email}:`, emailError);
       }
     }
 
