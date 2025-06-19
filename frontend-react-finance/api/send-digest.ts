@@ -84,8 +84,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const totalIncome = history.reduce((sum, row) => sum + (row.income || 0), 0);
       const totalExpenses = history.reduce(
         (sum, row) =>
-          sum + (row.mortgage || 0) + (row.utilities || 0) + (row.carPayments || 0) + (row.carPayments || 0) +
-    (row.creditCards || 0),
+          sum + (row.mortgage || 0) + (row.utilities || 0) + (row.carPayments || 0) + (row.creditCards || 0),
         0
       );
       const savings = totalIncome - totalExpenses;
