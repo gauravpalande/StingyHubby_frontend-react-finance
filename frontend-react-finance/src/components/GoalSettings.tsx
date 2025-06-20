@@ -13,15 +13,20 @@ const GoalSettings = () => {
 
   useEffect(() => {
     const loadGoals = async () => {
-      if (!user) return;
-      const { data } = await supabase
-        .from('goals')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
+  if (!user) return;
 
-      if (data) setGoals(data);
-    };
+  const { data, error } = await supabase
+    .from('goals')
+    .select('*')
+    .eq('user_id', user.id)
+    .limit(1); // avoid 406
+  if (error) {
+    console.error('Error loading goals:', error.message);
+  }
+  if (data && data.length > 0) {
+    setGoals(data[0]);
+  }
+};
     loadGoals();
   }, [user]);
 
