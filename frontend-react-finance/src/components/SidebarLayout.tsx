@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import type { ReactNode } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { FaHome, FaEdit, FaHistory, FaChartPie, FaRobot, FaInfoCircle } from 'react-icons/fa';
+import { useSession } from '@supabase/auth-helpers-react';
 
 interface SidebarLayoutProps {
   children?: ReactNode;
@@ -23,10 +24,14 @@ const expandedWidth = 200;
 const SidebarLayout: React.FC<SidebarLayoutProps> = ({ children }) => {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
 
-  // For touch/click toggle
   const handleToggle = (idx: number) => {
     setExpandedIndex(expandedIndex === idx ? null : idx);
   };
+
+  const session = useSession();
+  const user = session?.user;
+  const name = user?.user_metadata?.full_name || user?.email;
+  const avatar = user?.user_metadata?.avatar_url;
 
   return (
     <div style={{ display: 'flex', height: '100vh' }}>
@@ -50,6 +55,7 @@ const SidebarLayout: React.FC<SidebarLayoutProps> = ({ children }) => {
             💰
           </span>
         </div>
+
         {navItems.map((item, idx) => (
           <NavLink
             key={item.to}
@@ -76,17 +82,61 @@ const SidebarLayout: React.FC<SidebarLayoutProps> = ({ children }) => {
             onTouchStart={() => handleToggle(idx)}
           >
             {item.icon}
-            <span style={{
-              display: expandedIndex === idx ? 'inline' : 'none',
-              whiteSpace: 'nowrap',
-              transition: 'opacity 0.2s',
-              opacity: expandedIndex === idx ? 1 : 0,
-            }}>
+            <span
+              style={{
+                display: expandedIndex === idx ? 'inline' : 'none',
+                whiteSpace: 'nowrap',
+                transition: 'opacity 0.2s',
+                opacity: expandedIndex === idx ? 1 : 0,
+              }}
+            >
               {item.label}
             </span>
           </NavLink>
         ))}
+
+        {user && (
+          <div
+            style={{
+              marginTop: 'auto',
+              padding: '8px',
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: expandedIndex !== null ? 'flex-start' : 'center',
+              gap: 10,
+              borderTop: '1px solid #ccc',
+            }}
+          >
+            {avatar && (
+              <img
+                src={avatar}
+                alt={name}
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: '50%',
+                  objectFit: 'cover',
+                }}
+              />
+            )}
+            {expandedIndex !== null && (
+              <span
+                style={{
+                  fontSize: '0.9rem',
+                  fontWeight: 500,
+                  overflow: 'hidden',
+                  whiteSpace: 'nowrap',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                {name}
+              </span>
+            )}
+          </div>
+        )}
       </nav>
+
       <main style={{ flex: 1, padding: '24px', overflowY: 'auto' }}>
         {children ?? <Outlet />}
       </main>
