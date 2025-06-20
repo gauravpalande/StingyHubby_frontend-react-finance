@@ -1,6 +1,7 @@
 {
   "rewrites": [
-    { "source": "/app/:path*", "destination": "/" }
+    { "source": "/app/:path*", "destination": "/" },
+    { "source": "/(.*)", "destination": "/" }
   ],
   "crons": [
     {
