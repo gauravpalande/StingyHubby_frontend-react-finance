@@ -46,24 +46,26 @@ const EditableFinancialHistory: React.FC = () => {
   };
 
   const saveRow = async (id: string) => {
-    const changes = editing[id];
-    console.log('Saving changes for row:', id, changes);
-    if (!changes) return;
+  const changes = editing[id];
+  if (!changes) return;
 
-    const { error } = await supabase
-      .from('submissions')
-      .update(changes)
-      .eq('id', id);
+  const original = history.find((row) => row.id === id);
+  const updatedRow = { ...original, ...changes };
 
-    if (error) {
-      console.error('Error saving row:', error.message);
-    } else {
-      const newEditing = { ...editing };
-      delete newEditing[id];
-      setEditing(newEditing);
-      fetchHistory();
-    }
-  };
+  const { error } = await supabase
+    .from('submissions')
+    .update(updatedRow)
+    .eq('id', id);
+
+  if (error) {
+    console.error('Error saving row:', error.message);
+  } else {
+    const newEditing = { ...editing };
+    delete newEditing[id];
+    setEditing(newEditing);
+    fetchHistory();
+  }
+};
 
   const deleteRow = async (id: string) => {
     const { error } = await supabase.from('submissions').delete().eq('id', id);
