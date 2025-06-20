@@ -50,7 +50,10 @@ const EditableFinancialHistory: React.FC = () => {
   if (!changes) return;
 
   const original = history.find((row) => row.id === id);
-  const updatedRow = { ...original, ...changes };
+  if (!original) return;
+
+  // Merge and remove 'timestamp'
+  const { timestamp, ...updatedRow } = { ...original, ...changes };
 
   const { error } = await supabase
     .from('submissions')
