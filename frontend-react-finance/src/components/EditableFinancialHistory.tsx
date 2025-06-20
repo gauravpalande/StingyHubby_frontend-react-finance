@@ -89,9 +89,13 @@ const EditableFinancialHistory: React.FC = () => {
           <tr>
             <th>Date</th>
             <th>Income</th>
+            <th>Emergency Fund</th>
+            <th>Health</th>
+            <th>Retirement</th>
+            <th>Credit Cards</th>
             <th>Mortgage</th>
-            <th>Utilities</th>
             <th>Car Payments</th>
+            <th>Utilities</th>
             <th>Actions</th>
           </tr>
         </thead>
