@@ -8,8 +8,7 @@ const GoalSettings = () => {
   const [goals, setGoals] = useState<any>({
     emergency: 0,
     retirement: 0,
-    health: 0,
-    creditCards: 0
+    health: 0
   });
 
   useEffect(() => {
@@ -48,7 +47,7 @@ const GoalSettings = () => {
   return (
     <div style={{ maxWidth: 500, margin: '0 auto' }}>
       <h2>🎯 Customize Your Financial Goals</h2>
-      {['emergency', 'retirement', 'health', 'creditCards'].map((field) => (
+      {['emergency', 'retirement', 'health'].map((field) => (
         <div key={field} style={{ marginBottom: 12 }}>
           <label style={{ display: 'block', marginBottom: 4 }}>{field} goal ($)</label>
           <input
