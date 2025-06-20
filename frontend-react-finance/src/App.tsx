@@ -22,7 +22,7 @@ const App: React.FC = () => {
         {session && (
           <Route path="/app" element={<SidebarLayout />}>
             <Route path="update" element={<UpdateFinancesPage />} />
-            <Route path="history" element={<EditableFinancialHistory />} />
+            <Route path="/app/history" element={<EditableFinancialHistory />} />
             <Route path="breakdown" element={<FinanceBreakdownPage />} />
             <Route path="suggestions" element={<GPTSuggestionPage/>} />
             <Route path="about" element={<AboutPage />} />
