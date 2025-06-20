@@ -43,12 +43,6 @@ const EditableFinancialHistory: React.FC = () => {
       ...prev,
       [id]: { ...prev[id], [field]: parseFloat(value) },
     }));
-
-    setHistory((prev) =>
-      prev.map((row) =>
-        row.id === id ? { ...row, [field]: parseFloat(value) } : row
-      )
-    );
   };
 
   const saveRow = async (id: string) => {
@@ -71,7 +65,7 @@ const EditableFinancialHistory: React.FC = () => {
       const newEditing = { ...editing };
       delete newEditing[id];
       setEditing(newEditing);
-      // No need to refetch, as local state already reflects updates
+      await fetchHistory(); // Ensure fresh data after save
     }
   };
 
@@ -80,7 +74,7 @@ const EditableFinancialHistory: React.FC = () => {
     if (error) {
       console.error('Error deleting row:', error.message);
     } else {
-      setHistory((prev) => prev.filter((row) => row.id !== id));
+      await fetchHistory(); // Ensure fresh data after delete
     }
   };
 
@@ -125,14 +119,14 @@ const EditableFinancialHistory: React.FC = () => {
           {history.map((row) => (
             <tr key={row.id}>
               <td>{row.timestamp}</td>
-              <td><input type="number" value={row.income || 0} onChange={(e) => updateRow(row.id, 'income', e.target.value)} /></td>
-              <td><input type="number" value={row.emergency || 0} onChange={(e) => updateRow(row.id, 'emergency', e.target.value)} /></td>
-              <td><input type="number" value={row.health || 0} onChange={(e) => updateRow(row.id, 'health', e.target.value)} /></td>
-              <td><input type="number" value={row.retirement || 0} onChange={(e) => updateRow(row.id, 'retirement', e.target.value)} /></td>
-              <td><input type="number" value={row.creditCards || 0} onChange={(e) => updateRow(row.id, 'creditCards', e.target.value)} /></td>
-              <td><input type="number" value={row.mortgage || 0} onChange={(e) => updateRow(row.id, 'mortgage', e.target.value)} /></td>
-              <td><input type="number" value={row.carPayments || 0} onChange={(e) => updateRow(row.id, 'carPayments', e.target.value)} /></td>
-              <td><input type="number" value={row.utilities || 0} onChange={(e) => updateRow(row.id, 'utilities', e.target.value)} /></td>
+              <td><input type="number" value={(editing[row.id]?.income ?? row.income) || 0} onChange={(e) => updateRow(row.id, 'income', e.target.value)} /></td>
+              <td><input type="number" value={(editing[row.id]?.emergency ?? row.emergency) || 0} onChange={(e) => updateRow(row.id, 'emergency', e.target.value)} /></td>
+              <td><input type="number" value={(editing[row.id]?.health ?? row.health) || 0} onChange={(e) => updateRow(row.id, 'health', e.target.value)} /></td>
+              <td><input type="number" value={(editing[row.id]?.retirement ?? row.retirement) || 0} onChange={(e) => updateRow(row.id, 'retirement', e.target.value)} /></td>
+              <td><input type="number" value={(editing[row.id]?.creditCards ?? row.creditCards) || 0} onChange={(e) => updateRow(row.id, 'creditCards', e.target.value)} /></td>
+              <td><input type="number" value={(editing[row.id]?.mortgage ?? row.mortgage) || 0} onChange={(e) => updateRow(row.id, 'mortgage', e.target.value)} /></td>
+              <td><input type="number" value={(editing[row.id]?.carPayments ?? row.carPayments) || 0} onChange={(e) => updateRow(row.id, 'carPayments', e.target.value)} /></td>
+              <td><input type="number" value={(editing[row.id]?.utilities ?? row.utilities) || 0} onChange={(e) => updateRow(row.id, 'utilities', e.target.value)} /></td>
               <td>
                 <button onClick={() => saveRow(row.id)}>💾</button>
                 <button onClick={() => deleteRow(row.id)}>🗑️</button>
