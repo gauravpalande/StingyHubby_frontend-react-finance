@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import type { ReactNode } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { FaHome, FaEdit, FaHistory, FaChartPie, FaRobot, FaInfoCircle, FaBullseye } from 'react-icons/fa';
+import { FaHome, FaEdit, FaHistory, FaChartPie, FaRobot, FaInfoCircle, FaBullseye, FaCog } from 'react-icons/fa';
 import { useSession } from '@supabase/auth-helpers-react';
 
 interface SidebarLayoutProps {
@@ -16,6 +16,7 @@ const navItems = [
   { to: '/app/history', icon: <FaHistory />, label: 'Financial History' },
   { to: '/app/breakdown', icon: <FaChartPie />, label: 'Expense Breakdown' },
   { to: '/app/suggestions', icon: <FaRobot />, label: 'GPT Suggestions' },
+  { to: '/app/preferences', icon: <FaCog />, label: 'Preferences' }, // Add this
   { to: '/app/about', icon: <FaInfoCircle />, label: 'About' },
 ];
 

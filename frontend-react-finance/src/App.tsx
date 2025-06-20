@@ -11,6 +11,7 @@ import FinanceBreakdownPage from './pages/FinanceBreakdownPage'; // ✅ NEW
 import GPTSuggestionPage from './pages/GPTSuggestionPage'; // ✅ NEW
 import EditableFinancialHistory from './components/EditableFinancialHistory';
 import GoalSettings from './components/GoalSettings';
+import PreferencesPage from './pages/PreferencesPage';
 
 
 const App: React.FC = () => {
@@ -27,6 +28,7 @@ const App: React.FC = () => {
             <Route path="/app/history" element={<EditableFinancialHistory />} />
             <Route path="breakdown" element={<FinanceBreakdownPage />} />
             <Route path="suggestions" element={<GPTSuggestionPage/>} />
+            <Route path="preferences" element={<PreferencesPage />} />
             <Route path="about" element={<AboutPage />} />
             <Route index element={<FinanceForm />} />
             {/* More routes inside app layout if needed */}
