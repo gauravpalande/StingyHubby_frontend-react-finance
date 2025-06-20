@@ -47,6 +47,7 @@ const EditableFinancialHistory: React.FC = () => {
 
   const saveRow = async (id: string) => {
     const changes = editing[id];
+    console.log('Saving changes for row:', id, changes);
     if (!changes) return;
 
     const { error } = await supabase
