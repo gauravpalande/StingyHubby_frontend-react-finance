@@ -52,28 +52,24 @@ const EditableFinancialHistory: React.FC = () => {
   const original = history.find((row) => row.id === id);
   if (!original) return;
 
-  // Merge and filter out 'timestamp' and undefined values
-  const { timestamp, ...updatedRow } = { ...original, ...changes };
-  const cleanRow: { [key: string]: any } = {};
-  for (const key in updatedRow) {
-    if (updatedRow[key] !== undefined) cleanRow[key] = updatedRow[key];
-  }
+  const merged = { ...original, ...changes };
+  const { timestamp, id: _id, created_at, ...cleaned } = merged;
 
-  console.log("📝 Attempting to update:", cleanRow);
+  console.log("📝 Cleaned row to update:", cleaned);
 
-  const { error, data } = await supabase
+  const { error } = await supabase
     .from('submissions')
-    .update(cleanRow)
-    .eq('id', id); // make sure id matches DB type
+    .update(cleaned)
+    .eq('id', id);
 
   if (error) {
     console.error('❌ Error saving row:', error.message);
   } else {
-    console.log('✅ Row updated:', data);
+    console.log('✅ Row updated successfully');
     const newEditing = { ...editing };
     delete newEditing[id];
     setEditing(newEditing);
-    await fetchHistory(); // Refresh from DB
+    await fetchHistory();
   }
 };
 
