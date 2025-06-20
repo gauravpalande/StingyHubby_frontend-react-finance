@@ -1,7 +1,18 @@
-// EditableFinancialHistory.tsx
 import React, { useEffect, useState } from 'react';
 import { useSupabaseClient, useUser } from '@supabase/auth-helpers-react';
-import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, Legend } from 'recharts';
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend
+} from 'recharts';
+import { usePreferences } from '../hooks/usePreferences';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#A28BD4', '#F29C1F', '#57D9A3', '#FF6B6B'];
 
@@ -10,6 +21,7 @@ const EditableFinancialHistory: React.FC = () => {
   const user = useUser();
   const [history, setHistory] = useState<any[]>([]);
   const [editing, setEditing] = useState<{ [key: string]: any }>({});
+  const { prefs } = usePreferences();
 
   const fetchHistory = async () => {
     if (!user) return;
@@ -46,76 +58,89 @@ const EditableFinancialHistory: React.FC = () => {
   };
 
   const saveRow = async (id: string) => {
-  const changes = editing[id];
-  if (!changes) return;
+    const changes = editing[id];
+    if (!changes) return;
 
-  const original = history.find((row) => row.id === id);
-  if (!original) return;
+    const { error } = await supabase
+      .from('submissions')
+      .update(changes)
+      .eq('id', id)
+      .eq('user_id', user?.id);
 
-  const merged = { ...original, ...changes };
-  const { timestamp, id: _id, created_at, ...cleaned } = merged;
-
-  console.log("📝 Cleaned row to update:", cleaned);
-
-  const { error } = await supabase
-    .from('submissions')
-    .update(cleaned)
-    .eq('id', id);
-
-  if (error) {
-    console.error('❌ Error saving row:', error.message);
-  } else {
-    console.log('✅ Row updated successfully');
-    const newEditing = { ...editing };
-    delete newEditing[id];
-    setEditing(newEditing);
-    await fetchHistory();
-  }
-};
+    if (error) {
+      console.error('Error saving row:', error.message);
+    } else {
+      const newEditing = { ...editing };
+      delete newEditing[id];
+      setEditing(newEditing);
+      fetchHistory();
+    }
+  };
 
   const deleteRow = async (id: string) => {
-    const { error } = await supabase.from('submissions').delete().eq('id', id);
+    const { error } = await supabase
+      .from('submissions')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', user?.id);
+
     if (error) {
       console.error('Error deleting row:', error.message);
     } else {
-      await fetchHistory(); // Ensure fresh data after delete
+      fetchHistory();
     }
   };
+
+  const keys = [
+    'income',
+    'emergency',
+    'health',
+    'retirement',
+    'creditCards',
+    'mortgage',
+    'carPayments',
+    'utilities'
+  ];
+
+  const chartType = prefs?.graph_type === 'bar' ? (
+    <BarChart data={history}>
+      <CartesianGrid strokeDasharray="3 3" />
+      <XAxis dataKey="timestamp" />
+      <YAxis />
+      <Tooltip />
+      <Legend />
+      {keys.map((key, i) => (
+        <Bar key={key} dataKey={key} fill={COLORS[i % COLORS.length]} />
+      ))}
+    </BarChart>
+  ) : (
+    <LineChart data={history}>
+      <CartesianGrid strokeDasharray="3 3" />
+      <XAxis dataKey="timestamp" />
+      <YAxis />
+      <Tooltip />
+      <Legend />
+      {keys.map((key, i) => (
+        <Line key={key} type="monotone" dataKey={key} stroke={COLORS[i % COLORS.length]} />
+      ))}
+    </LineChart>
+  );
 
   return (
     <div style={{ marginTop: 40 }}>
       <h3>Financial History</h3>
 
       <ResponsiveContainer width="100%" height={300}>
-        <LineChart data={history}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="timestamp" />
-          <YAxis />
-          <Tooltip />
-          <Legend />
-          {['income', 'emergency', 'health', 'retirement', 'creditCards', 'mortgage', 'carPayments', 'utilities'].map((key, index) => (
-            <Line
-              key={key}
-              type="monotone"
-              dataKey={key}
-              stroke={COLORS[index % COLORS.length]}
-            />
-          ))}
-        </LineChart>
+        {chartType}
       </ResponsiveContainer>
 
       <table style={{ width: '100%', marginTop: 24, borderCollapse: 'collapse' }}>
         <thead>
           <tr>
             <th>Date</th>
-            <th>Income</th>
-            <th>Emergency Fund</th>
-            <th>Health</th>
-            <th>Retirement</th>
-            <th>Credit Cards</th>
-            <th>Mortgage</th>
-            <th>Car Payments</th>
-            <th>Utilities</th>
+            {keys.map((key) => (
+              <th key={key}>{key}</th>
+            ))}
             <th>Actions</th>
           </tr>
         </thead>
@@ -123,14 +148,16 @@ const EditableFinancialHistory: React.FC = () => {
           {history.map((row) => (
             <tr key={row.id}>
               <td>{row.timestamp}</td>
-              <td><input type="number" value={(editing[row.id]?.income ?? row.income) || 0} onChange={(e) => updateRow(row.id, 'income', e.target.value)} /></td>
-              <td><input type="number" value={(editing[row.id]?.emergency ?? row.emergency) || 0} onChange={(e) => updateRow(row.id, 'emergency', e.target.value)} /></td>
-              <td><input type="number" value={(editing[row.id]?.health ?? row.health) || 0} onChange={(e) => updateRow(row.id, 'health', e.target.value)} /></td>
-              <td><input type="number" value={(editing[row.id]?.retirement ?? row.retirement) || 0} onChange={(e) => updateRow(row.id, 'retirement', e.target.value)} /></td>
-              <td><input type="number" value={(editing[row.id]?.creditCards ?? row.creditCards) || 0} onChange={(e) => updateRow(row.id, 'creditCards', e.target.value)} /></td>
-              <td><input type="number" value={(editing[row.id]?.mortgage ?? row.mortgage) || 0} onChange={(e) => updateRow(row.id, 'mortgage', e.target.value)} /></td>
-              <td><input type="number" value={(editing[row.id]?.carPayments ?? row.carPayments) || 0} onChange={(e) => updateRow(row.id, 'carPayments', e.target.value)} /></td>
-              <td><input type="number" value={(editing[row.id]?.utilities ?? row.utilities) || 0} onChange={(e) => updateRow(row.id, 'utilities', e.target.value)} /></td>
+              {keys.map((key) => (
+                <td key={key}>
+                  <input
+                    type="number"
+                    value={(editing[row.id]?.[key] ?? row[key]) || 0}
+                    onChange={(e) => updateRow(row.id, key, e.target.value)}
+                    style={{ width: '80px' }}
+                  />
+                </td>
+              ))}
               <td>
                 <button onClick={() => saveRow(row.id)}>💾</button>
                 <button onClick={() => deleteRow(row.id)}>🗑️</button>
