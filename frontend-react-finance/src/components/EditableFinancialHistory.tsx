@@ -13,11 +13,16 @@ const EditableFinancialHistory: React.FC = () => {
 
   const fetchHistory = async () => {
     if (!user) return;
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('submissions')
       .select('*')
       .eq('user_id', user.id)
       .order('created_at', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching history:', error.message);
+      return;
+    }
 
     if (data) {
       setHistory(
@@ -36,7 +41,7 @@ const EditableFinancialHistory: React.FC = () => {
   const updateRow = (id: string, field: string, value: string) => {
     setEditing((prev) => ({
       ...prev,
-      [id]: { ...prev[id], [field]: value },
+      [id]: { ...prev[id], [field]: parseFloat(value) },
     }));
   };
 
@@ -49,7 +54,9 @@ const EditableFinancialHistory: React.FC = () => {
       .update(changes)
       .eq('id', id);
 
-    if (!error) {
+    if (error) {
+      console.error('Error saving row:', error.message);
+    } else {
       const newEditing = { ...editing };
       delete newEditing[id];
       setEditing(newEditing);
@@ -58,8 +65,12 @@ const EditableFinancialHistory: React.FC = () => {
   };
 
   const deleteRow = async (id: string) => {
-    await supabase.from('submissions').delete().eq('id', id);
-    fetchHistory();
+    const { error } = await supabase.from('submissions').delete().eq('id', id);
+    if (error) {
+      console.error('Error deleting row:', error.message);
+    } else {
+      fetchHistory();
+    }
   };
 
   return (
