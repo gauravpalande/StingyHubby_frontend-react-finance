@@ -7,9 +7,9 @@ import FinanceForm from './components/FinanceForm';
 import HomePage from './pages/HomePage';
 import AboutPage from './pages/AboutPage'; // <-- add this import
 import UpdateFinancesPage from './pages/UpdateFinancesPage'; // ✅ NEW
-import FinancialHistoryWrapper from './components/FinancialHistoryWrapper'; // ✅ NEW
 import FinanceBreakdownPage from './pages/FinanceBreakdownPage'; // ✅ NEW
 import GPTSuggestionPage from './pages/GPTSuggestionPage'; // ✅ NEW
+import EditableFinancialHistory from './components/EditableFinancialHistory';
 
 
 const App: React.FC = () => {
@@ -22,7 +22,7 @@ const App: React.FC = () => {
         {session && (
           <Route path="/app" element={<SidebarLayout />}>
             <Route path="update" element={<UpdateFinancesPage />} />
-            <Route path="history" element={<FinancialHistoryWrapper />} />
+            <Route path="history" element={<EditableFinancialHistory />} />
             <Route path="breakdown" element={<FinanceBreakdownPage />} />
             <Route path="suggestions" element={<GPTSuggestionPage/>} />
             <Route path="about" element={<AboutPage />} />
