@@ -46,28 +46,36 @@ const EditableFinancialHistory: React.FC = () => {
   };
 
   const saveRow = async (id: string) => {
-    const changes = editing[id];
-    if (!changes) return;
+  const changes = editing[id];
+  if (!changes) return;
 
-    const original = history.find((row) => row.id === id);
-    if (!original) return;
+  const original = history.find((row) => row.id === id);
+  if (!original) return;
 
-    const { timestamp, ...updatedRow } = { ...original, ...changes };
+  // Merge and filter out 'timestamp' and undefined values
+  const { timestamp, ...updatedRow } = { ...original, ...changes };
+  const cleanRow: { [key: string]: any } = {};
+  for (const key in updatedRow) {
+    if (updatedRow[key] !== undefined) cleanRow[key] = updatedRow[key];
+  }
 
-    const { error } = await supabase
-      .from('submissions')
-      .update(updatedRow)
-      .eq('id', id);
+  console.log("📝 Attempting to update:", cleanRow);
 
-    if (error) {
-      console.error('Error saving row:', error.message);
-    } else {
-      const newEditing = { ...editing };
-      delete newEditing[id];
-      setEditing(newEditing);
-      await fetchHistory(); // Ensure fresh data after save
-    }
-  };
+  const { error, data } = await supabase
+    .from('submissions')
+    .update(cleanRow)
+    .eq('id', id); // make sure id matches DB type
+
+  if (error) {
+    console.error('❌ Error saving row:', error.message);
+  } else {
+    console.log('✅ Row updated:', data);
+    const newEditing = { ...editing };
+    delete newEditing[id];
+    setEditing(newEditing);
+    await fetchHistory(); // Refresh from DB
+  }
+};
 
   const deleteRow = async (id: string) => {
     const { error } = await supabase.from('submissions').delete().eq('id', id);
