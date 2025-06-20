@@ -100,9 +100,13 @@ const EditableFinancialHistory: React.FC = () => {
             <tr key={row.id}>
               <td>{row.timestamp}</td>
               <td><input type="number" value={(editing[row.id]?.income ?? row.income) || 0} onChange={(e) => updateRow(row.id, 'income', e.target.value)} /></td>
+              <td><input type="number" value={(editing[row.id]?.emergency ?? row.emergency) || 0} onChange={(e) => updateRow(row.id, 'emergency', e.target.value)} /></td>
+              <td><input type="number" value={(editing[row.id]?.health ?? row.health) || 0} onChange={(e) => updateRow(row.id, 'health', e.target.value)} /></td>
+              <td><input type="number" value={(editing[row.id]?.retirement ?? row.retirement) || 0} onChange={(e) => updateRow(row.id, 'retirement', e.target.value)} /></td>
+              <td><input type="number" value={(editing[row.id]?.creditCards ?? row.creditCards) || 0} onChange={(e) => updateRow(row.id, 'creditCards', e.target.value)} /></td>
               <td><input type="number" value={(editing[row.id]?.mortgage ?? row.mortgage) || 0} onChange={(e) => updateRow(row.id, 'mortgage', e.target.value)} /></td>
-              <td><input type="number" value={(editing[row.id]?.utilities ?? row.utilities) || 0} onChange={(e) => updateRow(row.id, 'utilities', e.target.value)} /></td>
               <td><input type="number" value={(editing[row.id]?.carPayments ?? row.carPayments) || 0} onChange={(e) => updateRow(row.id, 'carPayments', e.target.value)} /></td>
+              <td><input type="number" value={(editing[row.id]?.utilities ?? row.utilities) || 0} onChange={(e) => updateRow(row.id, 'utilities', e.target.value)} /></td>
               <td>
                 <button onClick={() => saveRow(row.id)}>💾</button>
                 <button onClick={() => deleteRow(row.id)}>🗑️</button>
