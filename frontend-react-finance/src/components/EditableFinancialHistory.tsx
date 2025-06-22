@@ -24,7 +24,7 @@ const EditableFinancialHistory: React.FC = () => {
   const fetchHistory = async () => {
     if (!user) return;
     setLoading(true);
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('submissions')
       .select('*')
       .eq('user_id', user.id)
