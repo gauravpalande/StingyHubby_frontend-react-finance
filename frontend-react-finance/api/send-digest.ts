@@ -1,123 +1,117 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-// ... previous imports and setup remain unchanged
-
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
+import { createObjectCsvStringifier } from 'csv-writer';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-const supabaseUrl = process.env.SUPABASE_URL as string;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY as string;
-const supabase = createClient(supabaseUrl, supabaseKey);
-
-const resend = new Resend(process.env.RESEND_API_KEY as string);
+const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+const resend = new Resend(process.env.RESEND_API_KEY!);
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   console.log("📩 Digest handler started");
 
   try {
-    // ✅ Join submissions with users to fetch email
-    type SubmissionRow = {
-      user_id: string;
-      users: { email: string }[] | { email: string } | null;
-    };
+    const { data: users, error: userError } = await supabase
+      .from('users')
+      .select('user_id, email, name')
+      .eq('wants_digest', true);
 
-    const { data: submissions, error: userError } = await supabase
-      .from('submissions')
-      .select('user_id, users(email)')
-      .neq('users.email', null);
-
-    if (userError) {
-      console.error("❌ Error fetching users:", userError.message);
-      return res.status(500).json({ error: userError.message });
+    if (userError || !users) {
+      console.error("❌ Error fetching users:", userError?.message);
+      return res.status(500).json({ error: userError?.message || 'No users found' });
     }
 
-    if (!submissions || submissions.length === 0) {
-      console.warn("⚠️ No users found");
-      return res.status(200).json({ message: "No users to process" });
-    }
-
-    // ✅ Extract unique user_id → email map
-    const usersMap = new Map<string, string>();
-    for (const row of submissions as SubmissionRow[]) {
-      const userId = row.user_id;
-      let email: string | undefined;
-      if (Array.isArray(row.users)) {
-        email = row.users[0]?.email;
-      } else if (row.users && typeof row.users === 'object') {
-        email = row.users.email;
-      }
-
-      if (userId && email && !usersMap.has(userId)) {
-        usersMap.set(userId, email);
-      }
-    }
-
-    // ✅ Send digest to each user
-    for (const [userId, email] of usersMap.entries()) {
-      const { data: history, error } = await supabase
+    for (const user of users) {
+      const { data: history, error: historyError } = await supabase
         .from('submissions')
         .select('*')
-        .eq('user_id', userId)
+        .eq('user_id', user.user_id)
         .order('created_at', { ascending: false })
         .limit(10);
 
-      if (error || !history || history.length === 0) {
-        console.warn(`⚠️ Skipping user ${email} due to no submission data`);
-        continue;
-      }
-
-      // Fetch latest suggestion for the user
-      const { data: suggestionData, error: suggestionError } = await supabase
-        .from('submissions')
-        .select('suggestion')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      let latestSuggestion = '';
-      if (suggestionError) {
-        console.warn(`⚠️ Could not fetch suggestion for ${email}:`, suggestionError.message);
-      } else if (suggestionData && suggestionData.suggestion) {
-        latestSuggestion = suggestionData.suggestion;
-      }
+      if (historyError || !history || history.length === 0) continue;
 
       const totalIncome = history.reduce((sum, row) => sum + (row.income || 0), 0);
       const totalExpenses = history.reduce(
         (sum, row) =>
-          sum + (row.mortgage || 0) + (row.utilities || 0) + (row.carPayments || 0) + (row.creditCards || 0),
+          sum + (row.mortgage || 0) + (row.utilities || 0) + (row.carPayments || 0),
         0
       );
       const savings = totalIncome - totalExpenses;
 
-      const summaryText = `
-Hi ${email},
+      const chartUrl = `https://quickchart.io/chart?c=${encodeURIComponent(JSON.stringify({
+        type: 'bar',
+        data: {
+          labels: history.map(row => new Date(row.created_at).toLocaleDateString()),
+          datasets: [
+            {
+              label: 'Income',
+              data: history.map(row => row.income || 0),
+              backgroundColor: 'rgba(54, 162, 235, 0.6)'
+            },
+            {
+              label: 'Expenses',
+              data: history.map(row =>
+                (row.mortgage || 0) + (row.utilities || 0) + (row.carPayments || 0)
+              ),
+              backgroundColor: 'rgba(255, 99, 132, 0.6)'
+            }
+          ]
+        }
+      }))}`;
 
-Here's your weekly financial digest from StingyHubby:
+      const csvStringifier = createObjectCsvStringifier({
+        header: Object.keys(history[0]).map(key => ({ id: key, title: key })),
+      });
 
-📥 Total Income: $${totalIncome.toFixed(2)}
-💸 Total Expenses: $${totalExpenses.toFixed(2)}
-💰 Estimated Savings: $${savings.toFixed(2)}
+      const csvContent = csvStringifier.getHeaderString() + csvStringifier.stringifyRecords(history);
 
-${latestSuggestion ? `💡 Latest Suggestion: ${latestSuggestion}\n` : ''}Stay stingy. Stay smart.
-— StingyHubby Team
-      `.trim();
+      const aiTips = `💡 AI Tip: Consider reducing discretionary expenses next month to increase savings.`;
+
+      const htmlContent = `
+        <div style="font-family: sans-serif">
+          <p>Hi ${user.name || user.email},</p>
+          <p>Here’s your weekly financial digest:</p>
+          <ul>
+            <li><strong>📥 Total Income:</strong> $${totalIncome.toFixed(2)}</li>
+            <li><strong>💸 Total Expenses:</strong> $${totalExpenses.toFixed(2)}</li>
+            <li><strong>💰 Estimated Savings:</strong> $${savings.toFixed(2)}</li>
+          </ul>
+          <p><img src="${chartUrl}" alt="Financial Chart" /></p>
+          <p>${aiTips}</p>
+          <p><small>To unsubscribe, update your preferences at stingyhubby.com.</small></p>
+        </div>
+      `;
 
       try {
-        await resend.emails.send({
-          from: 'digest@stingyhubby.xyz',
-          to: email,
+        const response = await resend.emails.send({
+          from: 'digest@stingyhubby.com',
+          to: user.email,
           subject: 'Your Weekly Financial Digest',
-          text: summaryText,
+          html: htmlContent,
+          attachments: [
+            {
+              filename: 'history.csv',
+              content: csvContent,
+            }
+          ]
         });
-        console.log(`✅ Sent email to ${email}`);
+
+        await supabase.from('email_logs').insert({
+          user_id: user.user_id,
+          email: user.email,
+          status: 'sent',
+          metadata: JSON.stringify(response),
+        });
+
+        console.log(`✅ Sent email to ${user.email}`);
       } catch (emailError) {
-        console.error(`❌ Failed to send email to ${email}:`, emailError);
+        console.error(`❌ Failed to send email to ${user.email}:`, emailError);
       }
     }
 
-    return res.status(200).json({ message: 'Digest emails processed.' });
+    return res.status(200).json({ message: 'Digest emails sent successfully' });
   } catch (err: any) {
-    console.error("💥 Unhandled exception:", err.message);
-    return res.status(500).json({ error: err.message || 'Internal Server Error' });
+    console.error("💥 Unhandled error:", err.message);
+    return res.status(500).json({ error: err.message });
   }
 }
