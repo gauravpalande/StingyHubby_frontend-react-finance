@@ -1,5 +1,4 @@
-// EditableFinancialHistory.tsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useSupabaseClient, useUser } from '@supabase/auth-helpers-react';
 import {
   ResponsiveContainer,
@@ -18,25 +17,17 @@ const EditableFinancialHistory: React.FC = () => {
   const supabase = useSupabaseClient();
   const user = useUser();
   const [history, setHistory] = useState<any[]>([]);
-  const [editing, setEditing] = useState<{ [key: string]: any }>({});
   const [loading, setLoading] = useState(true);
-  const [savingRowId, setSavingRowId] = useState<string | null>(null);
-  const [deletingRowId, setDeletingRowId] = useState<string | null>(null);
+  const printRef = useRef<HTMLDivElement>(null);
 
   const fetchHistory = async () => {
     if (!user) return;
     setLoading(true);
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('submissions')
       .select('*')
       .eq('user_id', user.id)
       .order('created_at', { ascending: true });
-
-    if (error) {
-      console.error('Error fetching history:', error.message);
-      setLoading(false);
-      return;
-    }
 
     if (data) {
       setHistory(
@@ -53,49 +44,54 @@ const EditableFinancialHistory: React.FC = () => {
     fetchHistory();
   }, [user]);
 
-  const updateRow = (id: string, field: string, value: string) => {
-    setEditing((prev) => ({
-      ...prev,
-      [id]: { ...prev[id], [field]: parseFloat(value) },
-    }));
+  const exportToCSV = () => {
+    if (!history.length) return;
+
+    const headers = ['Date', 'Income', 'Emergency', 'Health', 'Retirement', 'Credit Cards', 'Mortgage', 'Car Payments', 'Utilities'];
+    const rows = history.map(row =>
+      [
+        row.timestamp,
+        row.income,
+        row.emergency,
+        row.health,
+        row.retirement,
+        row.creditCards,
+        row.mortgage,
+        row.carPayments,
+        row.utilities,
+      ].join(',')
+    );
+
+    const csvContent = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'financial_history.csv';
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
-  const saveRow = async (id: string) => {
-    const changes = editing[id];
-    if (!changes) return;
-    setSavingRowId(id);
+  const exportToPDF = () => {
+    if (!printRef.current) return;
+    const originalContent = document.body.innerHTML;
+    const printContent = printRef.current.innerHTML;
 
-    const cleaned = { ...changes };
-    delete cleaned.timestamp;
-    delete cleaned.created_at;
-
-    const { error } = await supabase.from('submissions').update(cleaned).eq('id', id);
-
-    setSavingRowId(null);
-    if (error) {
-      console.error('Error saving row:', error.message);
-    } else {
-      const newEditing = { ...editing };
-      delete newEditing[id];
-      setEditing(newEditing);
-      fetchHistory();
-    }
-  };
-
-  const deleteRow = async (id: string) => {
-    setDeletingRowId(id);
-    const { error } = await supabase.from('submissions').delete().eq('id', id);
-    setDeletingRowId(null);
-    if (error) {
-      console.error('Error deleting row:', error.message);
-    } else {
-      fetchHistory();
-    }
+    document.body.innerHTML = printContent;
+    window.print();
+    document.body.innerHTML = originalContent;
+    window.location.reload();
   };
 
   return (
-    <div style={{ marginTop: 40 }}>
+    <div style={{ marginTop: 40 }} ref={printRef}>
       <h3>Financial History</h3>
+
+      <div style={{ marginBottom: 16 }}>
+        <button onClick={exportToCSV}>📁 Export CSV</button>
+        <button onClick={exportToPDF} style={{ marginLeft: 10 }}>🖨 Export PDF</button>
+      </div>
 
       {loading ? (
         <p>📊 Loading chart data...</p>
@@ -136,40 +132,20 @@ const EditableFinancialHistory: React.FC = () => {
               <th>Mortgage</th>
               <th>Car Payments</th>
               <th>Utilities</th>
-              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {history.map((row) => (
               <tr key={row.id}>
                 <td>{row.timestamp}</td>
-                {[
-                  'income',
-                  'emergency',
-                  'health',
-                  'retirement',
-                  'creditCards',
-                  'mortgage',
-                  'carPayments',
-                  'utilities',
-                ].map((field) => (
-                  <td key={field}>
-                    <input
-                      type="number"
-                      value={(editing[row.id]?.[field] ?? row[field]) || 0}
-                      onChange={(e) => updateRow(row.id, field, e.target.value)}
-                      style={{ width: 80 }}
-                    />
-                  </td>
-                ))}
-                <td>
-                  <button onClick={() => saveRow(row.id)} disabled={savingRowId === row.id}>
-                    {savingRowId === row.id ? 'Saving...' : '💾'}
-                  </button>
-                  <button onClick={() => deleteRow(row.id)} disabled={deletingRowId === row.id}>
-                    {deletingRowId === row.id ? 'Deleting...' : '🗑️'}
-                  </button>
-                </td>
+                <td>{row.income}</td>
+                <td>{row.emergency}</td>
+                <td>{row.health}</td>
+                <td>{row.retirement}</td>
+                <td>{row.creditCards}</td>
+                <td>{row.mortgage}</td>
+                <td>{row.carPayments}</td>
+                <td>{row.utilities}</td>
               </tr>
             ))}
           </tbody>
