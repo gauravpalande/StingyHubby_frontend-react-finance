@@ -17,13 +17,14 @@ const EditableFinancialHistory: React.FC = () => {
   const supabase = useSupabaseClient();
   const user = useUser();
   const [history, setHistory] = useState<any[]>([]);
+  const [editing, setEditing] = useState<{ [key: string]: any }>({});
   const [loading, setLoading] = useState(true);
   const printRef = useRef<HTMLDivElement>(null);
 
   const fetchHistory = async () => {
     if (!user) return;
     setLoading(true);
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('submissions')
       .select('*')
       .eq('user_id', user.id)
@@ -43,6 +44,35 @@ const EditableFinancialHistory: React.FC = () => {
   useEffect(() => {
     fetchHistory();
   }, [user]);
+
+  const updateRow = (id: string, field: string, value: string) => {
+    setEditing((prev) => ({
+      ...prev,
+      [id]: { ...prev[id], [field]: parseFloat(value) },
+    }));
+  };
+
+  const saveRow = async (id: string) => {
+    const changes = editing[id];
+    if (!changes) return;
+
+    const { error } = await supabase.from('submissions').update(changes).eq('id', id);
+
+    if (!error) {
+      const newEditing = { ...editing };
+      delete newEditing[id];
+      setEditing(newEditing);
+      fetchHistory();
+    } else {
+      console.error('Error saving row:', error.message);
+    }
+  };
+
+  const deleteRow = async (id: string) => {
+    const { error } = await supabase.from('submissions').delete().eq('id', id);
+    if (!error) fetchHistory();
+    else console.error('Error deleting row:', error.message);
+  };
 
   const exportToCSV = () => {
     if (!history.length) return;
@@ -130,22 +160,27 @@ const EditableFinancialHistory: React.FC = () => {
               <th>Retirement</th>
               <th>Credit Cards</th>
               <th>Mortgage</th>
-              <th>Car Payments</th>
+              <th>Car</th>
               <th>Utilities</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {history.map((row) => (
               <tr key={row.id}>
                 <td>{row.timestamp}</td>
-                <td>{row.income}</td>
-                <td>{row.emergency}</td>
-                <td>{row.health}</td>
-                <td>{row.retirement}</td>
-                <td>{row.creditCards}</td>
-                <td>{row.mortgage}</td>
-                <td>{row.carPayments}</td>
-                <td>{row.utilities}</td>
+                <td><input type="number" value={(editing[row.id]?.income ?? row.income) || 0} onChange={(e) => updateRow(row.id, 'income', e.target.value)} /></td>
+                <td><input type="number" value={(editing[row.id]?.emergency ?? row.emergency) || 0} onChange={(e) => updateRow(row.id, 'emergency', e.target.value)} /></td>
+                <td><input type="number" value={(editing[row.id]?.health ?? row.health) || 0} onChange={(e) => updateRow(row.id, 'health', e.target.value)} /></td>
+                <td><input type="number" value={(editing[row.id]?.retirement ?? row.retirement) || 0} onChange={(e) => updateRow(row.id, 'retirement', e.target.value)} /></td>
+                <td><input type="number" value={(editing[row.id]?.creditCards ?? row.creditCards) || 0} onChange={(e) => updateRow(row.id, 'creditCards', e.target.value)} /></td>
+                <td><input type="number" value={(editing[row.id]?.mortgage ?? row.mortgage) || 0} onChange={(e) => updateRow(row.id, 'mortgage', e.target.value)} /></td>
+                <td><input type="number" value={(editing[row.id]?.carPayments ?? row.carPayments) || 0} onChange={(e) => updateRow(row.id, 'carPayments', e.target.value)} /></td>
+                <td><input type="number" value={(editing[row.id]?.utilities ?? row.utilities) || 0} onChange={(e) => updateRow(row.id, 'utilities', e.target.value)} /></td>
+                <td>
+                  <button onClick={() => saveRow(row.id)}>💾</button>
+                  <button onClick={() => deleteRow(row.id)}>🗑️</button>
+                </td>
               </tr>
             ))}
           </tbody>
