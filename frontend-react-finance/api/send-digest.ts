@@ -11,7 +11,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const { data: users, error: userError } = await supabase
       .from('users')
-      .select('user_id, email, name')
+      .select('id, email, name')
       .eq('wants_digest', true);
 
     if (userError || !users) {
