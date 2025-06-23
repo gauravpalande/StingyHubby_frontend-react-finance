@@ -23,7 +23,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const { data: history, error: historyError } = await supabase
         .from('submissions')
         .select('*')
-        .eq('user_id', user.user_id)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(10);
 
@@ -104,7 +104,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
 
         await supabase.from('email_logs').insert({
-          user_id: user.user_id,
+          user_id: user.id,
           email: user.email,
           status: 'sent',
           metadata: JSON.stringify(response),
