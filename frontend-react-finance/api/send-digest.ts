@@ -1,6 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
-import { createObjectCsvStringifier } from 'csv-writer';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
@@ -59,11 +58,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
       }))}`;
 
-      const csvStringifier = createObjectCsvStringifier({
-        header: Object.keys(history[0]).map(key => ({ id: key, title: key })),
-      });
+      function convertToCSV(rows: any[]): string {
+        if (!rows.length) return '';
 
-      const csvContent = csvStringifier.getHeaderString() + csvStringifier.stringifyRecords(history);
+        const headers = Object.keys(rows[0]);
+        const escape = (value: any) => `"${String(value).replace(/"/g, '""')}"`;
+
+        const headerLine = headers.join(',');
+        const lines = rows.map(row => headers.map(h => escape(row[h])).join(','));
+
+        return [headerLine, ...lines].join('\n');
+      }
+
+      const csvContent = convertToCSV(history);
 
       const aiTips = `💡 AI Tip: Consider reducing discretionary expenses next month to increase savings.`;
 
