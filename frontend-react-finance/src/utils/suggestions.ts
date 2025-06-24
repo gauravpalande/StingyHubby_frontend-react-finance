@@ -4,6 +4,7 @@ export async function getFinancialAdvice(latest: any) {
   const input = `
     I submitted this financial data:
     - Income: ${latest.income}
+    - Checking: ${latest.checking}
     - Mortgage: ${latest.mortgage}
     - Car Payments: ${latest.carPayments}
     - Utilities: ${latest.utilities}

@@ -26,7 +26,7 @@ const FinanceForm: React.FC = () => {
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
       <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr', gap: '12px 24px', marginBottom: 24 }}>
-        {['income', 'emergency', 'health', 'retirement', 'creditCards', 'mortgage', 'carPayments', 'utilities'].map((field) => (
+        {['income', 'checking', 'emergency', 'health', 'retirement', 'creditCards', 'mortgage', 'carPayments', 'utilities'].map((field) => (
           <React.Fragment key={field}>
             <label htmlFor={field} style={{ fontWeight: 'bold' }}>
               {field.charAt(0).toUpperCase() + field.slice(1)}:

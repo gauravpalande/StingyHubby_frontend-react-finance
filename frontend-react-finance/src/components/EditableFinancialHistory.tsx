@@ -77,11 +77,12 @@ const EditableFinancialHistory: React.FC = () => {
   const exportToCSV = () => {
     if (!history.length) return;
 
-    const headers = ['Date', 'Income', 'Emergency', 'Health', 'Retirement', 'Credit Cards', 'Mortgage', 'Car Payments', 'Utilities'];
+    const headers = ['Date', 'Income', 'Checking', 'Emergency', 'Health', 'Retirement', 'Credit Cards', 'Mortgage', 'Car Payments', 'Utilities'];
     const rows = history.map(row =>
       [
         row.timestamp,
         row.income,
+        row.checking,
         row.emergency,
         row.health,
         row.retirement,
@@ -135,7 +136,7 @@ const EditableFinancialHistory: React.FC = () => {
             <YAxis />
             <Tooltip />
             <Legend />
-            {['income', 'emergency', 'health', 'retirement', 'creditCards', 'mortgage', 'carPayments', 'utilities'].map(
+            {['income', 'checking', 'emergency', 'health', 'retirement', 'creditCards', 'mortgage', 'carPayments', 'utilities'].map(
               (key, index) => (
                 <Line
                   key={key}
@@ -155,6 +156,7 @@ const EditableFinancialHistory: React.FC = () => {
             <tr>
               <th>Date</th>
               <th>Income</th>
+              <th>Checking</th>
               <th>Emergency</th>
               <th>Health</th>
               <th>Retirement</th>
@@ -170,6 +172,7 @@ const EditableFinancialHistory: React.FC = () => {
               <tr key={row.id}>
                 <td>{row.timestamp}</td>
                 <td><input type="number" value={(editing[row.id]?.income ?? row.income) || 0} onChange={(e) => updateRow(row.id, 'income', e.target.value)} /></td>
+                <td><input type="number" value={(editing[row.id]?.checking ?? row.checking) || 0} onChange={(e) => updateRow(row.id, 'checking', e.target.value)} /></td>
                 <td><input type="number" value={(editing[row.id]?.emergency ?? row.emergency) || 0} onChange={(e) => updateRow(row.id, 'emergency', e.target.value)} /></td>
                 <td><input type="number" value={(editing[row.id]?.health ?? row.health) || 0} onChange={(e) => updateRow(row.id, 'health', e.target.value)} /></td>
                 <td><input type="number" value={(editing[row.id]?.retirement ?? row.retirement) || 0} onChange={(e) => updateRow(row.id, 'retirement', e.target.value)} /></td>
