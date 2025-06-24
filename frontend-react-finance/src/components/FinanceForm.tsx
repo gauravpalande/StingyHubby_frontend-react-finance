@@ -12,8 +12,8 @@ const FinanceForm: React.FC = () => {
   const onSubmit = async (data: FormData) => {
     if (!user) 
     {
-      //alert('You must be logged in to submit financial data.');
-      console.error('User not logged in');
+      //alert popup ('You must be logged in to submit financial data.');
+      alert('You must be logged in to submit financial data.');
       return;
     }
 
