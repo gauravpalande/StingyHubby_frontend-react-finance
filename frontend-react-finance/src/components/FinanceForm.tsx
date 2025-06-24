@@ -10,7 +10,12 @@ const FinanceForm: React.FC = () => {
   const user = useUser();
 
   const onSubmit = async (data: FormData) => {
-    if (!user) return;
+    if (!user) 
+    {
+      //alert('You must be logged in to submit financial data.');
+      console.error('User not logged in');
+      return;
+    }
 
     const suggestion = await getFinancialAdvice(data);
     const payload = {
