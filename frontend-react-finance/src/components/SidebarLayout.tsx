@@ -1,7 +1,17 @@
 import React, { useState } from 'react';
 import type { ReactNode } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { FaHome, FaEdit, FaHistory, FaChartPie, FaRobot, FaInfoCircle, FaBullseye, FaCog, FaBug } from 'react-icons/fa';
+import {
+  FaHome,
+  FaEdit,
+  FaHistory,
+  FaChartPie,
+  FaRobot,
+  FaInfoCircle,
+  FaBullseye,
+  FaCog,
+  FaBug,
+} from 'react-icons/fa';
 import { useSession } from '@supabase/auth-helpers-react';
 
 interface SidebarLayoutProps {
@@ -10,15 +20,15 @@ interface SidebarLayoutProps {
 }
 
 const navItems = [
-  { to: '/', icon: <FaHome />, label: 'Home' },
-  { to: '/app/update', icon: <FaEdit />, label: 'Update Finance' },
-  { to: '/app/goals', icon: <FaBullseye />, label: 'Set Goals' },
-  { to: '/app/history', icon: <FaHistory />, label: 'Financial History' },
-  { to: '/app/breakdown', icon: <FaChartPie />, label: 'Expense Breakdown' },
-  { to: '/app/suggestions', icon: <FaRobot />, label: 'GPT Suggestions' },
-  { to: '/app/preferences', icon: <FaCog />, label: 'Preferences' }, // Add this
-  { to: '/app/feedback', icon: <FaBug />, label: 'Submit Feedback' },
-  { to: '/app/about', icon: <FaInfoCircle />, label: 'About' },
+  { to: '/', icon: <FaHome size={20} />, label: 'Home' },
+  { to: '/app/update', icon: <FaEdit size={20} />, label: 'Update Finance' },
+  { to: '/app/goals', icon: <FaBullseye size={20} />, label: 'Set Goals' },
+  { to: '/app/history', icon: <FaHistory size={20} />, label: 'Financial History' },
+  { to: '/app/breakdown', icon: <FaChartPie size={20} />, label: 'Expense Breakdown' },
+  { to: '/app/suggestions', icon: <FaRobot size={20} />, label: 'GPT Suggestions' },
+  { to: '/app/preferences', icon: <FaCog size={20} />, label: 'Preferences' },
+  { to: '/app/feedback', icon: <FaBug size={20} />, label: 'Submit Feedback' },
+  { to: '/app/about', icon: <FaInfoCircle size={20} />, label: 'About' },
 ];
 
 const collapsedWidth = 60;
@@ -45,58 +55,56 @@ const SidebarLayout: React.FC<SidebarLayoutProps> = ({ children }) => {
           padding: '16px 8px',
           display: 'flex',
           flexDirection: 'column',
-          gap: '0px',
           alignItems: 'center',
           transition: 'width 0.2s',
         }}
       >
-        <div style={{ marginBottom: 24 }}>
+        <div style={{ marginBottom: 16 }}>
           <span style={{ fontWeight: 'bold', fontSize: 24, display: expandedIndex !== null ? 'inline' : 'none' }}>
             StingyHubby
           </span>
-          <span style={{ display: expandedIndex === null ? 'inline' : 'none' }}>
-            💰
-          </span>
+          <span style={{ display: expandedIndex === null ? 'inline' : 'none' }}>💰</span>
         </div>
 
-        {navItems.map((item, idx) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            style={({ isActive }) => ({
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              fontWeight: isActive ? 'bold' : 'normal',
-              color: isActive ? '#007bff' : 'black',
-              textDecoration: 'none',
-              width: '100%',
-              justifyContent: expandedIndex === idx ? 'flex-start' : 'center',
-              padding: '8px',
-              borderRadius: 8,
-              background: expandedIndex === idx ? '#e9ecef' : 'transparent',
-              cursor: 'pointer',
-              position: 'relative',
-              transition: 'background 0.2s',
-            })}
-            onMouseEnter={() => setExpandedIndex(idx)}
-            onMouseLeave={() => setExpandedIndex(null)}
-            onClick={() => handleToggle(idx)}
-            onTouchStart={() => handleToggle(idx)}
-          >
-            {item.icon}
-            <span
-              style={{
-                display: expandedIndex === idx ? 'inline' : 'none',
-                whiteSpace: 'nowrap',
-                transition: 'opacity 0.2s',
-                opacity: expandedIndex === idx ? 1 : 0,
-              }}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%', alignItems: 'center' }}>
+          {navItems.map((item, idx) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              style={({ isActive }) => ({
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: isActive ? 'bold' : 'normal',
+                color: isActive ? '#007bff' : 'black',
+                textDecoration: 'none',
+                width: '100%',
+                padding: '8px 0',
+                borderRadius: 8,
+                background: expandedIndex === idx ? '#e9ecef' : 'transparent',
+                cursor: 'pointer',
+                transition: 'background 0.2s',
+              })}
+              onMouseEnter={() => setExpandedIndex(idx)}
+              onMouseLeave={() => setExpandedIndex(null)}
+              onClick={() => handleToggle(idx)}
+              onTouchStart={() => handleToggle(idx)}
             >
-              {item.label}
-            </span>
-          </NavLink>
-        ))}
+              {item.icon}
+              <span
+                style={{
+                  fontSize: 12,
+                  marginTop: 4,
+                  display: expandedIndex === idx ? 'block' : 'none',
+                  textAlign: 'center',
+                }}
+              >
+                {item.label}
+              </span>
+            </NavLink>
+          ))}
+        </div>
 
         {user && (
           <div
@@ -106,9 +114,10 @@ const SidebarLayout: React.FC<SidebarLayoutProps> = ({ children }) => {
               width: '100%',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: expandedIndex !== null ? 'flex-start' : 'center',
+              justifyContent: 'center',
               gap: 10,
               borderTop: '1px solid #ccc',
+              flexDirection: 'column',
             }}
           >
             {avatar && (
@@ -131,6 +140,7 @@ const SidebarLayout: React.FC<SidebarLayoutProps> = ({ children }) => {
                   overflow: 'hidden',
                   whiteSpace: 'nowrap',
                   textOverflow: 'ellipsis',
+                  textAlign: 'center',
                 }}
               >
                 {name}
