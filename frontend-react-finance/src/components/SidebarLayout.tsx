@@ -66,7 +66,7 @@ const SidebarLayout: React.FC<SidebarLayoutProps> = ({ children }) => {
           <span style={{ display: expandedIndex === null ? 'inline' : 'none' }}>💰</span>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%', alignItems: 'center' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 0, width: '100%', alignItems: 'center' }}>
           {navItems.map((item, idx) => (
             <NavLink
               key={item.to}
@@ -115,7 +115,7 @@ const SidebarLayout: React.FC<SidebarLayoutProps> = ({ children }) => {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: 0,
+              gap: 10,
               borderTop: '1px solid #ccc',
               flexDirection: 'column',
             }}
