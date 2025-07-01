@@ -115,7 +115,7 @@ const SidebarLayout: React.FC<SidebarLayoutProps> = ({ children }) => {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: 10,
+              gap: 0,
               borderTop: '1px solid #ccc',
               flexDirection: 'column',
             }}
