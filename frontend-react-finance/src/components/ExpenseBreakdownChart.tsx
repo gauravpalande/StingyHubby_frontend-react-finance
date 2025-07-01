@@ -10,7 +10,7 @@ interface Props {
   data: ExpenseData[];
 }
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28'];
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF4C4C'];
 
 const ExpenseBreakdownChart: React.FC<Props> = ({ data }) => {
   return (
