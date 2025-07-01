@@ -45,7 +45,7 @@ const SidebarLayout: React.FC<SidebarLayoutProps> = ({ children }) => {
           padding: '16px 8px',
           display: 'flex',
           flexDirection: 'column',
-          gap: '20px',
+          gap: '0px',
           alignItems: 'center',
           transition: 'width 0.2s',
         }}
