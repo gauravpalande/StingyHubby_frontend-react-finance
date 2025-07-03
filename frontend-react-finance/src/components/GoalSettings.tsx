@@ -112,7 +112,7 @@ const GoalSettings = () => {
           return (
             <div key={field} style={{ marginBottom: 20 }}>
               <div style={{ marginBottom: 4 }}>
-                <strong>{field.charAt(0).toUpperCase() + field.slice(1)}:</strong> {progress[field] || 0} / {goals[field] || 0}
+                <strong>{field.charAt(0).toUpperCase() + field.slice(1)}:</strong> {progress[field] || 0}$ / {goals[field] || 0}$
               </div>
               <div style={{
                 background: '#eee',
