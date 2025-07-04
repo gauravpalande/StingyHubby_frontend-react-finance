@@ -17,7 +17,7 @@ export async function getFinancialAdvice(latest: any, goals: any) {
     - Health Goal: ${goals?.health || 0}
 
     Please give me one very detailed short-term and one very detailed long-term, actionable financial suggestion, based on https://imgur.com/personal-income-spending-flowchart-united-states-lSoUQr2 and common personal finance advice.
-    Respond in simple, user-friendly language.
+    Respond in simple, user-friendly language. Also include a short summary of the progress towards each goal, like "You are 50% towards your emergency fund goal of $5000, keep it up!".
   `;
 
   try {
