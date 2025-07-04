@@ -4,6 +4,8 @@ import {
   ResponsiveContainer,
   LineChart,
   Line,
+  BarChart,
+  Bar,
   CartesianGrid,
   XAxis,
   YAxis,
@@ -19,25 +21,39 @@ const EditableFinancialHistory: React.FC = () => {
   const [history, setHistory] = useState<any[]>([]);
   const [editing, setEditing] = useState<{ [key: string]: any }>({});
   const [loading, setLoading] = useState(true);
+  const [chartType, setChartType] = useState<'line' | 'bar'>('line');
   const printRef = useRef<HTMLDivElement>(null);
 
   const fetchHistory = async () => {
     if (!user) return;
     setLoading(true);
-    const { data } = await supabase
-      .from('submissions')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: true });
 
-    if (data) {
+    const [historyRes, prefsRes] = await Promise.all([
+      supabase.from('submissions')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true }),
+      supabase.from('preferences')
+        .select('graph_type')
+        .eq('user_id', user.id)
+        .single()
+    ]);
+
+    if (historyRes.data) {
       setHistory(
-        data.map((d: any) => ({
+        historyRes.data.map((d: any) => ({
           ...d,
           timestamp: new Date(d.created_at).toLocaleDateString(),
         }))
       );
     }
+
+    if (prefsRes.data?.graph_type === 'bar') {
+      setChartType('bar');
+    } else {
+      setChartType('line');
+    }
+
     setLoading(false);
   };
 
@@ -115,6 +131,8 @@ const EditableFinancialHistory: React.FC = () => {
     window.location.reload();
   };
 
+  const chartKeys = ['income', 'checking', 'emergency', 'health', 'retirement', 'creditCards', 'mortgage', 'carPayments', 'utilities'];
+
   return (
     <div style={{ marginTop: 40 }} ref={printRef}>
       <h3>Financial History</h3>
@@ -130,23 +148,38 @@ const EditableFinancialHistory: React.FC = () => {
         <p>No data to display.</p>
       ) : (
         <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={history}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="timestamp" />
-            <YAxis />
-            <Tooltip />
-            <Legend />
-            {['income', 'checking', 'emergency', 'health', 'retirement', 'creditCards', 'mortgage', 'carPayments', 'utilities'].map(
-              (key, index) => (
+          {chartType === 'bar' ? (
+            <BarChart data={history}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="timestamp" />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              {chartKeys.map((key, index) => (
+                <Bar
+                  key={key}
+                  dataKey={key}
+                  fill={COLORS[index % COLORS.length]}
+                />
+              ))}
+            </BarChart>
+          ) : (
+            <LineChart data={history}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="timestamp" />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              {chartKeys.map((key, index) => (
                 <Line
                   key={key}
                   type="monotone"
                   dataKey={key}
                   stroke={COLORS[index % COLORS.length]}
                 />
-              )
-            )}
-          </LineChart>
+              ))}
+            </LineChart>
+          )}
         </ResponsiveContainer>
       )}
 
@@ -155,15 +188,9 @@ const EditableFinancialHistory: React.FC = () => {
           <thead>
             <tr>
               <th>Date</th>
-              <th>Income</th>
-              <th>Checking</th>
-              <th>Emergency</th>
-              <th>Health</th>
-              <th>Retirement</th>
-              <th>Credit Cards</th>
-              <th>Mortgage</th>
-              <th>Car Payments</th>
-              <th>Utilities</th>
+              {chartKeys.map((key) => (
+                <th key={key}>{key.charAt(0).toUpperCase() + key.slice(1)}</th>
+              ))}
               <th>Actions</th>
             </tr>
           </thead>
@@ -171,15 +198,15 @@ const EditableFinancialHistory: React.FC = () => {
             {history.map((row) => (
               <tr key={row.id}>
                 <td>{row.timestamp}</td>
-                <td><input type="number" value={(editing[row.id]?.income ?? row.income) || 0} onChange={(e) => updateRow(row.id, 'income', e.target.value)} /></td>
-                <td><input type="number" value={(editing[row.id]?.checking ?? row.checking) || 0} onChange={(e) => updateRow(row.id, 'checking', e.target.value)} /></td>
-                <td><input type="number" value={(editing[row.id]?.emergency ?? row.emergency) || 0} onChange={(e) => updateRow(row.id, 'emergency', e.target.value)} /></td>
-                <td><input type="number" value={(editing[row.id]?.health ?? row.health) || 0} onChange={(e) => updateRow(row.id, 'health', e.target.value)} /></td>
-                <td><input type="number" value={(editing[row.id]?.retirement ?? row.retirement) || 0} onChange={(e) => updateRow(row.id, 'retirement', e.target.value)} /></td>
-                <td><input type="number" value={(editing[row.id]?.creditCards ?? row.creditCards) || 0} onChange={(e) => updateRow(row.id, 'creditCards', e.target.value)} /></td>
-                <td><input type="number" value={(editing[row.id]?.mortgage ?? row.mortgage) || 0} onChange={(e) => updateRow(row.id, 'mortgage', e.target.value)} /></td>
-                <td><input type="number" value={(editing[row.id]?.carPayments ?? row.carPayments) || 0} onChange={(e) => updateRow(row.id, 'carPayments', e.target.value)} /></td>
-                <td><input type="number" value={(editing[row.id]?.utilities ?? row.utilities) || 0} onChange={(e) => updateRow(row.id, 'utilities', e.target.value)} /></td>
+                {chartKeys.map((key) => (
+                  <td key={key}>
+                    <input
+                      type="number"
+                      value={(editing[row.id]?.[key] ?? row[key]) || 0}
+                      onChange={(e) => updateRow(row.id, key, e.target.value)}
+                    />
+                  </td>
+                ))}
                 <td>
                   <button onClick={() => saveRow(row.id)}>💾</button>
                   <button onClick={() => deleteRow(row.id)}>🗑️</button>
