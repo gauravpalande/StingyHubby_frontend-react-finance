@@ -1,6 +1,6 @@
 import { openai } from './gpt';
 
-export async function getFinancialAdvice(latest: any) {
+export async function getFinancialAdvice(latest: any, goals: any) {
   const input = `
     I submitted this financial data:
     - Income: ${latest.income}
@@ -12,6 +12,9 @@ export async function getFinancialAdvice(latest: any) {
     - Health: ${latest.health}
     - Retirement: ${latest.retirement}
     - Credit Cards: ${latest.creditCards}
+    - Emergency Goal: ${goals?.emergency || 0}
+    - Retirement Goal: ${goals?.retirement || 0}
+    - Health Goal: ${goals?.health || 0}
 
     Please give me one very detailed short-term and one very detailed long-term, actionable financial suggestion, based on https://imgur.com/personal-income-spending-flowchart-united-states-lSoUQr2 and common personal finance advice.
     Respond in simple, user-friendly language.

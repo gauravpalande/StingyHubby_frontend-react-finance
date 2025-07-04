@@ -30,7 +30,13 @@ const FinanceForm: React.FC = () => {
     setIsSubmitting(true);
     setSubmitted(false);
 
-    const suggestion = await getFinancialAdvice(data);
+    const { data: goals } = await supabase
+  .from('goals')
+  .select('*')
+  .eq('user_id', user.id)
+  .single();
+
+    const suggestion = await getFinancialAdvice(data, goals);
     const payload = {
       ...data,
       suggestion,
