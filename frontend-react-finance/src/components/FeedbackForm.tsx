@@ -29,10 +29,17 @@ const FeedbackForm: React.FC = () => {
     }
   };
 
+  const getSuccessMessage = () => {
+    if (type === 'bug') {
+      return '🐞 Bug reported successfully';
+    }
+    return '✅ Feedback submitted successfully';
+  };
+
   return (
     <div style={{ maxWidth: 600, margin: '0 auto', padding: 24 }}>
       <h2>Submit Feedback</h2>
-      {success && <p style={{ color: 'green' }}>✅ Feedback submitted successfully</p>}
+      {success && <p style={{ color: 'green' }}>{getSuccessMessage()}</p>}
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <label>
           Type:
