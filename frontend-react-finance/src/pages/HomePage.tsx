@@ -18,7 +18,6 @@ const HomePage: React.FC = () => {
     window.location.href = '/';
   };
 
-  // 🔄 Sync user to Supabase `users` table
   useEffect(() => {
     const syncUserToDB = async () => {
       if (!session?.user) return;
@@ -45,85 +44,95 @@ const HomePage: React.FC = () => {
     syncUserToDB();
   }, [session, supabase]);
 
-  return session ? (
-  <SidebarLayout sidebarWidth={sidebarWidth}>
-    <main
-      style={{
-        marginLeft: sidebarWidth,
-        width: '100%',
-        maxWidth: 720,
-        padding: 24,
-        margin: '0 auto',
-      }}
-    >
-      <img src={banner} alt="StingyHubby Banner" style={{ width: '100%', marginBottom: 24 }} />
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}>
-        <h2 style={{ width: '100%', margin: 0, textAlign: 'center' }}>
-          Welcome, {session.user.email}!
-        </h2>
-        <button
-          style={{ width: '100%', padding: '10px 0' }}
-          onClick={handleLogout}
+  if (session) {
+    return (
+      <SidebarLayout sidebarWidth={sidebarWidth}>
+        <main
+          style={{
+            marginLeft: sidebarWidth,
+            width: '100%',
+            maxWidth: 720,
+            padding: 24,
+            margin: '0 auto',
+          }}
         >
-          Sign Out
-        </button>
-      </div>
-    </main>
-  </SidebarLayout>
-) : (
-  <div style={{ display: 'flex', height: '100vh', background: '#f1f3f5' }}>
-    {/* Left: Login UI */}
-    <div
-      style={{
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'center',
-        background: '#fff',
-        padding: 32,
-      }}
-    >
-      <img src={banner} alt="StingyHubby Banner" style={{ maxWidth: 360, marginBottom: 24 }} />
-      <Auth
-        supabaseClient={supabase}
-        appearance={{ theme: ThemeSupa }}
-        providers={['google']}
-        onlyThirdPartyProviders
-      />
-      <EmailAuthWithCaptcha />
-    </div>
+          <img src={banner} alt="StingyHubby Banner" style={{ width: '100%', marginBottom: 24 }} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}>
+            <h2 style={{ width: '100%', margin: 0, textAlign: 'center' }}>
+              Welcome, {session.user.email}!
+            </h2>
+            <button
+              style={{ width: '100%', padding: '10px 0' }}
+              onClick={handleLogout}
+            >
+              Sign Out
+            </button>
+          </div>
+        </main>
+      </SidebarLayout>
+    );
+  }
 
-    {/* Right: Features section */}
-    <div
-  style={{
-    width: 'fit-content',
-    minWidth: 280,
-    padding: 32,
-    backgroundColor: '#f8f9fa',
-    borderLeft: '1px solid #dee2e6',
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'center',
-    alignItems: 'flex-start',
-  }}
->
-  <h2 style={{ marginBottom: '1rem' }}>📋 Features</h2>
-  <ul style={{ fontSize: '1rem', lineHeight: '1.8', paddingLeft: 16 }}>
-    <li>🔐 Secure Google login</li>
-    <li>📥 Update and track finances</li>
-    <li>📊 Visualize income & expenses</li>
-    <li>🧾 Edit/delete past entries</li>
-    <li>💡 AI-powered suggestions</li>
-    <li>🎯 Set savings goals</li>
-    <li>📬 Digest emails (weekly/monthly)</li>
-    <li>📤 Export as CSV or PDF</li>
-    <li>🎨 Customize your view</li>
-    <li>🐞 Submit feedback or bugs</li>
-  </ul>
-</div>
-  </div>
-);
+  return (
+    <div style={{ display: 'flex', height: '100vh', background: '#f1f3f5' }}>
+      {/* Left: Login UI */}
+      <div
+        style={{
+          flex: 2,
+          background: '#fff',
+          padding: 48,
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+        }}
+      >
+        <img
+          src={banner}
+          alt="StingyHubby Banner"
+          style={{ width: '100%', maxWidth: 600, marginBottom: 32 }}
+        />
+        <div style={{ width: '100%', maxWidth: 400 }}>
+          <Auth
+            supabaseClient={supabase}
+            appearance={{ theme: ThemeSupa }}
+            providers={['google']}
+            onlyThirdPartyProviders
+          />
+          <EmailAuthWithCaptcha />
+        </div>
+      </div>
+
+      {/* Right: Features section */}
+      <div
+        style={{
+          width: 'fit-content',
+          minWidth: 280,
+          padding: 32,
+          backgroundColor: '#f8f9fa',
+          borderLeft: '1px solid #dee2e6',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'flex-start',
+        }}
+      >
+        <h2 style={{ marginBottom: '1rem' }}>📋 Features</h2>
+        <ul style={{ fontSize: '1rem', lineHeight: '1.8', paddingLeft: 16 }}>
+          <li>🔐 Secure Google login</li>
+          <li>📥 Update and track finances</li>
+          <li>📊 Visualize income & expenses</li>
+          <li>🧾 Edit/delete past entries</li>
+          <li>💡 AI-powered suggestions</li>
+          <li>🎯 Set savings goals</li>
+          <li>📬 Digest emails (weekly/monthly)</li>
+          <li>📤 Export as CSV or PDF</li>
+          <li>🎨 Customize your view</li>
+          <li>🐞 Submit feedback or bugs</li>
+        </ul>
+      </div>
+    </div>
+  );
 };
 
 export default HomePage;
