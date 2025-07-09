@@ -96,30 +96,32 @@ const HomePage: React.FC = () => {
 
     {/* Right: Features section */}
     <div
-      style={{
-        flex: 1,
-        backgroundColor: '#f8f9fa',
-        padding: 48,
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        borderLeft: '1px solid #dee2e6',
-      }}
-    >
-      <h2 style={{ marginBottom: '1.5rem' }}>📋 Features</h2>
-      <ul style={{ fontSize: '1.1rem', lineHeight: '1.8' }}>
-        <li>🔐 Secure Google login</li>
-        <li>📥 Update and track financial inputs</li>
-        <li>📊 Visualize income vs. expenses</li>
-        <li>🧾 Edit/delete past submissions</li>
-        <li>💡 AI-powered savings suggestions</li>
-        <li>🎯 Set personalized financial goals</li>
-        <li>📬 Weekly/monthly digest emails</li>
-        <li>📤 Export to CSV or PDF</li>
-        <li>🎨 Customize chart and layout</li>
-        <li>🐞 Submit bugs & feature requests</li>
-      </ul>
-    </div>
+  style={{
+    width: 'fit-content',
+    minWidth: 280,
+    padding: 32,
+    backgroundColor: '#f8f9fa',
+    borderLeft: '1px solid #dee2e6',
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+  }}
+>
+  <h2 style={{ marginBottom: '1rem' }}>📋 Features</h2>
+  <ul style={{ fontSize: '1rem', lineHeight: '1.8', paddingLeft: 16 }}>
+    <li>🔐 Secure Google login</li>
+    <li>📥 Update and track finances</li>
+    <li>📊 Visualize income & expenses</li>
+    <li>🧾 Edit/delete past entries</li>
+    <li>💡 AI-powered suggestions</li>
+    <li>🎯 Set savings goals</li>
+    <li>📬 Digest emails (weekly/monthly)</li>
+    <li>📤 Export as CSV or PDF</li>
+    <li>🎨 Customize your view</li>
+    <li>🐞 Submit feedback or bugs</li>
+  </ul>
+</div>
   </div>
 );
 };
