@@ -32,7 +32,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const totalIncome = history.reduce((sum, row) => sum + (row.income || 0), 0);
       const totalExpenses = history.reduce(
         (sum, row) =>
-          sum + (row.mortgage || 0) + (row.utilities || 0) + (row.carPayments || 0),
+          sum + (row.mortgage || 0) + (row.utilities || 0) + (row.carPayments || 0) + (row.creditCards || 0),
         0
       );
       const savings = totalIncome - totalExpenses;
@@ -50,7 +50,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             {
               label: 'Expenses',
               data: history.map(row =>
-                (row.mortgage || 0) + (row.utilities || 0) + (row.carPayments || 0)
+                (row.mortgage || 0) + (row.utilities || 0) + (row.carPayments || 0) + (row.creditCards || 0)
               ),
               backgroundColor: 'rgba(255, 99, 132, 0.6)'
             }
