@@ -72,7 +72,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const csvContent = convertToCSV(history);
 
-      const aiTips = `💡 AI Tip: Consider reducing discretionary expenses next month to increase savings.`;
+      const latestSuggestion = history[0]?.suggestion?.trim();
+      const aiTips = latestSuggestion
+        ? `💡 AI Tip: ${latestSuggestion}`
+        : `💡 AI Tip: Consider reducing discretionary expenses next month to increase savings.`;
 
       const htmlContent = `
         <div style="font-family: sans-serif">
