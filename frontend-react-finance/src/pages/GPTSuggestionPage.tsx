@@ -1,51 +1,60 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '../supabaseClient'; // Adjust path as needed
+import { supabase } from '../supabaseClient';
 import GPTSuggestions from '../components/GPTSuggestions';
 
 const GPTSuggestionPage = () => {
-    const [suggestion, setSuggestion] = useState('');
-    const [loading, setLoading] = useState(true);
+  const [shortTermSuggestion, setShortTermSuggestion] = useState('');
+  const [longTermSuggestion, setLongTermSuggestion] = useState('');
+  const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        const fetchLatestSuggestion = async () => {
-            setLoading(true);
-            // Get current user
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) {
-                setSuggestion('Please log in to see suggestions.');
-                setLoading(false);
-                return;
-            }
-            // Fetch latest suggestion for user
-            const { data, error } = await supabase
-                .from('submissions')
-                .select('suggestion')
-                .eq('user_id', user.id)
-                .order('created_at', { ascending: false })
-                .limit(1)
-                .single();
+  useEffect(() => {
+    const fetchLatestSuggestion = async () => {
+      setLoading(true);
 
-            if (error || !data) {
-                setSuggestion('No suggestions found.');
-            } else {
-                setSuggestion(data.suggestion);
-            }
-            setLoading(false);
-        };
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-        fetchLatestSuggestion();
-    }, []);
+      if (!user) {
+        setShortTermSuggestion('Please log in to see suggestions.');
+        setLoading(false);
+        return;
+      }
 
-    return (
-        <div>
-            <h2>GPT Suggestions</h2>
-            {loading ? (
-                <p>Loading...</p>
-            ) : (
-                <GPTSuggestions suggestion={suggestion} />
-            )}
-        </div>
-    );
+      const { data, error } = await supabase
+        .from('submissions')
+        .select('short_term_suggestion, long_term_suggestion')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (error || !data) {
+        setShortTermSuggestion('No suggestions found.');
+      } else {
+        setShortTermSuggestion(data.short_term_suggestion || '');
+        setLongTermSuggestion(data.long_term_suggestion || '');
+      }
+
+      setLoading(false);
+    };
+
+    fetchLatestSuggestion();
+  }, []);
+
+  return (
+    <div>
+      <h2>GPT Suggestions</h2>
+      {loading ? (
+        <p>Loading...</p>
+      ) : (
+        <GPTSuggestions
+          short_term_suggestion={shortTermSuggestion}
+          long_term_suggestion={longTermSuggestion}
+        />
+      )}
+    </div>
+  );
 };
 
 export default GPTSuggestionPage;
