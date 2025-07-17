@@ -72,10 +72,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const csvContent = convertToCSV(history);
 
-      const latestSuggestion = history[0]?.suggestion?.trim();
-      const aiTips = latestSuggestion
-        ? `💡 AI Tip: ${latestSuggestion}`
-        : `💡 AI Tip: Consider reducing discretionary expenses next month to increase savings.`;
+      const latestSTSuggestion = history[0]?.short_term_suggestion?.trim();
+      const latestLTSuggestion = history[0]?.long_term_suggestion?.trim();
+      const STAITips = latestSTSuggestion
+        ? `💡 Short Term AI Tip: ${latestSTSuggestion}`
+        : `💡 Short Term AI Tip: Consider reducing discretionary expenses next month to increase savings.`;
+      const LTAITips = latestLTSuggestion
+        ? `💡 Long Term AI Tip: ${latestLTSuggestion}`
+        : `💡 Long Term AI Tip: Consider contributing modh towards your retirement savings.`;
 
       const htmlContent = `
         <div style="font-family: sans-serif">
@@ -87,7 +91,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             <li><strong>💰 Estimated Savings:</strong> $${savings.toFixed(2)}</li>
           </ul>
           <p><img src="${chartUrl}" alt="Financial Chart" /></p>
-          <p>${aiTips}</p>
+          <p>${STAITips}</p>
+          <p>${LTAITips}</p>
           <p><small>To unsubscribe, update your preferences at https://stingyhubby.vercel.app/.</small></p>
         </div>
       `;
