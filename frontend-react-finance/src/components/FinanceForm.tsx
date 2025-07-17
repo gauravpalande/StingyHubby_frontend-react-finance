@@ -36,12 +36,12 @@ const FinanceForm: React.FC = () => {
   .eq('user_id', user.id)
   .single();
 
-    const shortTermSuggestion = await getSTFinancialAdvice(data, goals);
-    const longTermSuggestion = await getLTFinancialAdvice(data, goals);
+    const short_term_suggestion = await getSTFinancialAdvice(data, goals);
+    const long_term_suggestion = await getLTFinancialAdvice(data, goals);
     const payload = {
       ...data,
-      shortTermSuggestion,
-      longTermSuggestion,
+      short_term_suggestion,
+      long_term_suggestion,
       user_id: user.id,
     };
 
