@@ -79,7 +79,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         : `💡 Short Term AI Tip: Consider reducing discretionary expenses next month to increase savings.`;
       const LTAITips = latestLTSuggestion
         ? `💡 Long Term AI Tip: ${latestLTSuggestion}`
-        : `💡 Long Term AI Tip: Consider contributing modh towards your retirement savings.`;
+        : `💡 Long Term AI Tip: Consider contributing more towards your retirement savings.`;
 
       const htmlContent = `
         <div style="font-family: sans-serif">
