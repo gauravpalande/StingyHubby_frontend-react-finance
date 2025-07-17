@@ -52,7 +52,7 @@ const FinanceForm: React.FC = () => {
     if (!error) {
       setSubmitted(true);
       reset();
-      setTimeout(() => setSubmitted(false), 5000); // hide after 5 seconds
+      setTimeout(() => setSubmitted(false), 10000); // hide after 5 seconds
     } else {
       alert('There was an error submitting the form. Please try again.');
     }
