@@ -1,5 +1,5 @@
 import React from 'react';
-import { useSession } from '@supabase/auth-helpers-react';
+import { useSessionContext } from '@supabase/auth-helpers-react';
 import SidebarLayout from '../components/SidebarLayout';
 
 const sidebarWidth = 140;
@@ -19,7 +19,7 @@ const AboutContent: React.FC = () => (
       StingyHubby helps you manage your personal finances by tracking income and expenses,
       offering GPT-powered advice, and visualizing your financial history.
     </p>
-
+    
     {/* Developer Section */}
     <section style={{ marginBottom: 32 }}>
       <h2 style={{ color: '#2b6cb0', fontSize: 22, marginBottom: 8 }}>Developer</h2>
@@ -159,13 +159,28 @@ const AboutContent: React.FC = () => (
 );
 
 const AboutPage: React.FC = () => {
-  const session = useSession();
+  const { session, isLoading } = useSessionContext();
 
-  if (session) {
-    return <SidebarLayout sidebarWidth={sidebarWidth}><AboutContent /></SidebarLayout>;
+  if (isLoading) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        background: '#f8f9fa',
+        fontFamily: 'Segoe UI, Arial, sans-serif'
+      }}>
+        <p>Loading...</p>
+      </div>
+    );
   }
 
-  return (
+  return session ? (
+    <SidebarLayout sidebarWidth={sidebarWidth}>
+      <AboutContent />
+    </SidebarLayout>
+  ) : (
     <div style={{
       backgroundColor: '#f1f3f5',
       minHeight: '100vh',
