@@ -1,8 +1,6 @@
 import React from 'react';
 import { useSessionContext } from '@supabase/auth-helpers-react';
-import SidebarLayout from '../components/SidebarLayout';
 
-const sidebarWidth = 140;
 
 const AboutContent: React.FC = () => (
   <div style={{
@@ -159,7 +157,7 @@ const AboutContent: React.FC = () => (
 );
 
 const AboutPage: React.FC = () => {
-  const { session, isLoading } = useSessionContext();
+  const { isLoading } = useSessionContext();
 
   // ⏳ Still loading session state
   if (isLoading) {
