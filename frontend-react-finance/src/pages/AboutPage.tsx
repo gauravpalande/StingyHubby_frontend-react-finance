@@ -161,6 +161,7 @@ const AboutContent: React.FC = () => (
 const AboutPage: React.FC = () => {
   const { session, isLoading } = useSessionContext();
 
+  // ⏳ Still loading session state
   if (isLoading) {
     return (
       <div style={{
@@ -168,28 +169,16 @@ const AboutPage: React.FC = () => {
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
-        background: '#f8f9fa',
-        fontFamily: 'Segoe UI, Arial, sans-serif'
+        fontFamily: 'Segoe UI, Arial, sans-serif',
+        backgroundColor: '#f8f9fa'
       }}>
         <p>Loading...</p>
       </div>
     );
   }
 
-  return session ? (
-    <SidebarLayout sidebarWidth={sidebarWidth}>
-      <AboutContent />
-    </SidebarLayout>
-  ) : (
-    <div style={{
-      backgroundColor: '#f1f3f5',
-      minHeight: '100vh',
-      paddingTop: 48,
-      paddingBottom: 48
-    }}>
-      <AboutContent />
-    </div>
-  );
+  // ✅ Render page normally — layout handled by router/layout
+  return <AboutContent />;
 };
 
 export default AboutPage;
