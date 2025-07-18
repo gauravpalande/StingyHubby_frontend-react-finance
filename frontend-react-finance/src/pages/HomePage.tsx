@@ -1,4 +1,3 @@
-// src/pages/HomePage.tsx
 import React, { useEffect } from 'react';
 import banner from '../assets/stingy-hubby-banner.png';
 import { useSession, useSupabaseClient } from '@supabase/auth-helpers-react';
@@ -6,6 +5,7 @@ import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
 import EmailAuthWithCaptcha from '../components/EmailAuthWithCaptcha';
 import SidebarLayout from '../components/SidebarLayout';
+import { Link } from 'react-router-dom'; // Make sure react-router-dom is installed
 
 const sidebarWidth = 140;
 
@@ -85,8 +85,29 @@ const HomePage: React.FC = () => {
           flexDirection: 'column',
           justifyContent: 'center',
           alignItems: 'center',
+          position: 'relative', // ⬅️ Required for positioning "About" link
         }}
       >
+        {/* Top-right About Link */}
+        <Link
+          to="/about"
+          style={{
+            position: 'absolute',
+            top: 16,
+            right: 16,
+            textDecoration: 'none',
+            backgroundColor: '#fff',
+            padding: '6px 12px',
+            borderRadius: 6,
+            boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
+            color: '#333',
+            fontWeight: 'bold',
+            fontSize: 14,
+          }}
+        >
+          About StingyHubby
+        </Link>
+
         <img
           src={banner}
           alt="StingyHubby Banner"
