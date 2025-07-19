@@ -97,6 +97,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           <p><img src="${chartUrl}" alt="Financial Chart" /></p>
           <p>${STAITips}</p>
           <p>${LTAITips}</p>
+          <p>${GoalAITips}</p>
           <p><small>To unsubscribe, update your preferences at https://stingyhubby.vercel.app/.</small></p>
         </div>
       `;
