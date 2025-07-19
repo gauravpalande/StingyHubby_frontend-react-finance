@@ -86,7 +86,7 @@ export async function getGoalsFinancialAdvice(latest: any, goals: any) {
     - Retirement Goal: ${goals?.retirement || 0}
     - Health Goal: ${goals?.health || 0}
 
-    Include a short term and long term summary of the progress towards each goal, like "You are 50% towards your emergency fund goal of $5000, keep it up!".
+    Include a summary of the progress towards each goal, like "You are 50% towards your emergency fund goal of $5000, keep it up!".
   `;
 
   try {
