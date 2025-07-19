@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useSupabaseClient, useUser } from '@supabase/auth-helpers-react';
-import { getSTFinancialAdvice, getLTFinancialAdvice } from '../utils/suggestions';
+import { getSTFinancialAdvice, getLTFinancialAdvice, getGoalsFinancialAdvice } from '../utils/suggestions';
 import type { FormData } from '../types/formTypes';
 
 const spinnerStyle: React.CSSProperties = {
@@ -38,10 +38,12 @@ const FinanceForm: React.FC = () => {
 
     const short_term_suggestion = await getSTFinancialAdvice(data, goals);
     const long_term_suggestion = await getLTFinancialAdvice(data, goals);
+    const goal_suggestion = await getGoalsFinancialAdvice(data, goals);
     const payload = {
       ...data,
       short_term_suggestion,
       long_term_suggestion,
+      goal_suggestion,
       user_id: user.id,
     };
 

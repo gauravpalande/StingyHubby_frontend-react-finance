@@ -74,12 +74,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const latestSTSuggestion = history[0]?.short_term_suggestion?.trim();
       const latestLTSuggestion = history[0]?.long_term_suggestion?.trim();
+      const latestGoalSuggestion = history[0]?.goal_suggestion?.trim();
       const STAITips = latestSTSuggestion
         ? `💡 Short Term AI Tip: ${latestSTSuggestion}`
         : `💡 Short Term AI Tip: Consider reducing discretionary expenses next month to increase savings.`;
       const LTAITips = latestLTSuggestion
         ? `💡 Long Term AI Tip: ${latestLTSuggestion}`
         : `💡 Long Term AI Tip: Consider contributing more towards your retirement savings.`;
+      const GoalAITips = latestGoalSuggestion
+        ? `💡 Goal AI Tip: ${latestGoalSuggestion}`
+        : `💡 Goal AI Tip: Consider contributing more towards your goals.`;
 
       const htmlContent = `
         <div style="font-family: sans-serif">

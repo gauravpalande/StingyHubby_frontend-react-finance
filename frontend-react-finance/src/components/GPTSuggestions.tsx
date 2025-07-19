@@ -3,10 +3,11 @@ import React from 'react';
 interface Props {
   short_term_suggestion?: string;
   long_term_suggestion?: string;
+  goal_suggestion?: string;
 }
 
-const GPTSuggestions: React.FC<Props> = ({ short_term_suggestion, long_term_suggestion }) => {
-  if (!short_term_suggestion && !long_term_suggestion) return null;
+const GPTSuggestions: React.FC<Props> = ({ short_term_suggestion, long_term_suggestion, goal_suggestion }) => {
+  if (!short_term_suggestion && !long_term_suggestion && !goal_suggestion) return null;
 
   return (
     <div style={{ marginTop: 24, padding: 16, backgroundColor: '#fff0f0', borderRadius: 8 }}>
@@ -23,6 +24,13 @@ const GPTSuggestions: React.FC<Props> = ({ short_term_suggestion, long_term_sugg
         <div>
           <h5 style={{ margin: '8px 0' }}>📈 Long-Term</h5>
           <p>{long_term_suggestion}</p>
+        </div>
+      )}
+
+      {goal_suggestion && (
+        <div>
+            <h5 style={{ margin: '8px 0' }}>🎯 Goal</h5>
+          <p>{goal_suggestion}</p>
         </div>
       )}
     </div>
