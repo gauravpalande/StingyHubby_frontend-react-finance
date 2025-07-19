@@ -5,6 +5,7 @@ import GPTSuggestions from '../components/GPTSuggestions';
 const GPTSuggestionPage = () => {
   const [shortTermSuggestion, setShortTermSuggestion] = useState('');
   const [longTermSuggestion, setLongTermSuggestion] = useState('');
+  const [goalsSuggestion, setGoalsSuggestion] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -23,7 +24,7 @@ const GPTSuggestionPage = () => {
 
       const { data, error } = await supabase
         .from('submissions')
-        .select('short_term_suggestion, long_term_suggestion')
+        .select('short_term_suggestion, long_term_suggestion, goal_suggestion')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(1)
@@ -34,6 +35,7 @@ const GPTSuggestionPage = () => {
       } else {
         setShortTermSuggestion(data.short_term_suggestion || '');
         setLongTermSuggestion(data.long_term_suggestion || '');
+        setGoalsSuggestion(data.goal_suggestion || '');
       }
 
       setLoading(false);
@@ -51,6 +53,7 @@ const GPTSuggestionPage = () => {
         <GPTSuggestions
           short_term_suggestion={shortTermSuggestion}
           long_term_suggestion={longTermSuggestion}
+          goal_suggestion={goalsSuggestion}
         />
       )}
     </div>
