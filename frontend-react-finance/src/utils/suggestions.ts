@@ -87,6 +87,8 @@ export async function getGoalsFinancialAdvice(latest: any, goals: any) {
     - Health Goal: ${goals?.health || 0}
 
     Please give me one very detailed, actionable financial suggestion on the progress towards each goal, like "You are 50% towards your emergency fund goal of $5000, keep it up!".
+    do not include any short term or long term summary, just focus on the goals.
+    Respond in simple, user-friendly language.
   `;
 
   try {
