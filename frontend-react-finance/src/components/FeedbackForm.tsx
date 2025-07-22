@@ -49,7 +49,7 @@ const FeedbackForm: React.FC = () => {
           <select value={type} onChange={(e) => setType(e.target.value as 'feature' | 'bug' | 'security')}>
             <option value="feature">Feature Request</option>
             <option value="bug">Bug Report</option>
-            <option value="Security">Security concern</option>
+            <option value="security">Security concern</option>
           </select>
         </label>
 
