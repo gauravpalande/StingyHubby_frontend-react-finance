@@ -4,7 +4,7 @@ import { useSupabaseClient, useUser } from '@supabase/auth-helpers-react';
 const FeedbackForm: React.FC = () => {
   const supabase = useSupabaseClient();
   const user = useUser();
-  const [type, setType] = useState<'feature' | 'bug'>('feature');
+  const [type, setType] = useState<'feature' | 'bug' | 'security'>('feature');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [success, setSuccess] = useState(false);
@@ -33,6 +33,9 @@ const FeedbackForm: React.FC = () => {
     if (type === 'bug') {
       return '🐞 Bug reported successfully';
     }
+    if (type === 'security') {
+      return '🔒 Security concern reported successfully';
+    }
     return '✅ Feedback submitted successfully';
   };
 
@@ -43,9 +46,10 @@ const FeedbackForm: React.FC = () => {
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <label>
           Type:
-          <select value={type} onChange={(e) => setType(e.target.value as 'feature' | 'bug')}>
+          <select value={type} onChange={(e) => setType(e.target.value as 'feature' | 'bug' | 'security')}>
             <option value="feature">Feature Request</option>
             <option value="bug">Bug Report</option>
+            <option value="Security">Security concern</option>
           </select>
         </label>
 
