@@ -17,6 +17,26 @@ const AboutContent: React.FC = () => (
       StingyHubby helps you manage your personal finances by tracking income and expenses,
       offering GPT-powered advice, and visualizing your financial history.
     </p>
+
+    {/* StingyHubby Youtube Channel Section */}
+    <section style={{ marginBottom: 32 }}>
+      <h2 style={{ color: '#2b6cb0', fontSize: 22, marginBottom: 8 }}>StingyHubby Youtube Channel</h2>
+      <div style={{
+      background: '#f7fafc',
+      padding: 20,
+      borderRadius: 8,
+      boxShadow: '0 1px 4px rgba(0,0,0,0.03)'
+      }}>
+      <a
+        href="https://www.youtube.com/@StingyHubby"
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{ color: '#3182ce', fontWeight: 500, fontSize: 16 }}
+      >
+        www.youtube.com/@StingyHubby
+      </a>
+      </div>
+    </section>
     
     {/* Developer Section */}
     <section style={{ marginBottom: 32 }}>
