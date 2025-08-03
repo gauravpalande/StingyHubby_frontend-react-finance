@@ -56,7 +56,7 @@ const HomePage: React.FC = () => {
             margin: '0 auto',
           }}
         >
-          <img src={banner} alt="PennyWise Banner" style={{ width: '100%', marginBottom: 24 }} />
+          <img src={banner} alt="PennyWize Banner" style={{ width: '100%', marginBottom: 24 }} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}>
             <h2 style={{ width: '100%', margin: 0, textAlign: 'center' }}>
               Welcome, {session.user.email}!
@@ -105,12 +105,12 @@ const HomePage: React.FC = () => {
             fontSize: 14,
           }}
         >
-          About PennyWise
+          About PennyWize
         </Link>
 
         <img
           src={banner}
-          alt="PennyWise Banner"
+          alt="PennyWize Banner"
           style={{ width: '100%', maxWidth: 600, marginBottom: 32 }}
         />
         <div style={{ width: '100%', maxWidth: 400 }}>

@@ -5,7 +5,7 @@ const Auth = () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-    redirectTo: 'https://pennywise.vercel.app'
+    redirectTo: 'https://pennywize.vercel.app'
       }
     })
     console.log('location : ' ,window.location.hostname);

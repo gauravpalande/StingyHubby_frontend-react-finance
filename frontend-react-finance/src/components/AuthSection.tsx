@@ -10,7 +10,7 @@ const AuthSection: React.FC = () => {
 
   return (
     <div style={{ maxWidth: 720, margin: '0 auto', padding: '24px' }}>
-      <img src="/assets/stingy-hubby-banner.png" alt="PennyWise" style={{ width: '100%' }} />
+      <img src="/assets/stingy-hubby-banner.png" alt="PennyWize" style={{ width: '100%' }} />
       <Auth
         supabaseClient={supabase}
         appearance={{ theme: ThemeSupa }}

@@ -12,15 +12,15 @@ const AboutContent: React.FC = () => (
     borderRadius: 12,
     boxShadow: '0 2px 12px rgba(0,0,0,0.07)'
   }}>
-    <h1 style={{ color: '#2d3748', marginBottom: 8 }}>About PennyWise</h1>
+    <h1 style={{ color: '#2d3748', marginBottom: 8 }}>About PennyWize</h1>
     <p style={{ color: '#4a5568', marginBottom: 32 }}>
-      PennyWise helps you manage your personal finances by tracking income and expenses,
+      PennyWize helps you manage your personal finances by tracking income and expenses,
       offering GPT-powered advice, and visualizing your financial history.
     </p>
 
-    {/* PennyWise Youtube Channel Section */}
+    {/* PennyWize Youtube Channel Section */}
     <section style={{ marginBottom: 32 }}>
-      <h2 style={{ color: '#2b6cb0', fontSize: 22, marginBottom: 8 }}>PennyWise Youtube Channel</h2>
+      <h2 style={{ color: '#2b6cb0', fontSize: 22, marginBottom: 8 }}>PennyWize Youtube Channel</h2>
       <div style={{
       background: '#f7fafc',
       padding: 20,
@@ -54,7 +54,7 @@ const AboutContent: React.FC = () => (
         <div style={{ marginBottom: 8 }}>
           <a href="https://www.linkedin.com/in/gaurav-palande-50549550" target="_blank" rel="noopener noreferrer" style={{ color: '#3182ce', marginRight: 16 }}>LinkedIn</a>
           <a href="https://github.com/gauravpalande" target="_blank" rel="noopener noreferrer" style={{ color: '#3182ce', marginRight: 16 }}>GitHub</a>
-          <a href="https://pennywise.vercel.app" target="_blank" rel="noopener noreferrer" style={{ color: '#3182ce' }}>Website</a>
+          <a href="https://pennywize.vercel.app" target="_blank" rel="noopener noreferrer" style={{ color: '#3182ce' }}>Website</a>
         </div>
       </div>
     </section>
