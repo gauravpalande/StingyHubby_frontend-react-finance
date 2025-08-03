@@ -61,7 +61,7 @@ const SidebarLayout: React.FC<SidebarLayoutProps> = ({ children }) => {
       >
         <div style={{ marginBottom: 16 }}>
           <span style={{ fontWeight: 'bold', fontSize: 24, display: expandedIndex !== null ? 'inline' : 'none' }}>
-            StingyHubby
+            PennyWise
           </span>
           <span style={{ display: expandedIndex === null ? 'inline' : 'none' }}>💰</span>
         </div>
