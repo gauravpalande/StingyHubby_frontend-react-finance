@@ -4,24 +4,33 @@ import { useSupabaseClient, useUser } from '@supabase/auth-helpers-react';
 const PreferencesPage: React.FC = () => {
   const supabase = useSupabaseClient();
   const user = useUser();
+
   const [graphType, setGraphType] = useState<'line' | 'bar'>('line');
   const [showSuggestions, setShowSuggestions] = useState(true);
+  const [emailWeeklyDigest, setEmailWeeklyDigest] = useState(false);
 
   useEffect(() => {
     if (!user) return;
     const loadPrefs = async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('preferences')
         .select('*')
         .eq('user_id', user.id)
         .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('❌ Error loading preferences:', error.message);
+        return;
+      }
+
       if (data) {
         setGraphType(data.graph_type || 'line');
         setShowSuggestions(data.show_suggestions ?? true);
+        setEmailWeeklyDigest(data.email_weekly_digest ?? false);
       }
     };
     loadPrefs();
-  }, [user]);
+  }, [user, supabase]);
 
   const savePrefs = async () => {
     if (!user) return;
@@ -31,17 +40,21 @@ const PreferencesPage: React.FC = () => {
         user_id: user.id,
         graph_type: graphType,
         show_suggestions: showSuggestions,
-      });
+        email_weekly_digest: emailWeeklyDigest,
+      }, { onConflict: 'user_id' });
+
     if (error) {
-      alert('Failed to save preferences');
+      alert('❌ Failed to save preferences');
+      console.error(error);
     } else {
-      alert('Preferences saved!');
+      alert('✅ Preferences saved!');
     }
   };
 
   return (
     <div style={{ maxWidth: 600, margin: '0 auto', padding: 24 }}>
       <h2>User Preferences</h2>
+
       <div style={{ marginBottom: 20 }}>
         <label>Chart Type: </label>
         <select value={graphType} onChange={(e) => setGraphType(e.target.value as 'line' | 'bar')}>
@@ -49,6 +62,7 @@ const PreferencesPage: React.FC = () => {
           <option value="bar">Bar Chart</option>
         </select>
       </div>
+
       <div style={{ marginBottom: 20 }}>
         <label>
           <input
@@ -59,6 +73,18 @@ const PreferencesPage: React.FC = () => {
           Show GPT Suggestions
         </label>
       </div>
+
+      <div style={{ marginBottom: 20 }}>
+        <label>
+          <input
+            type="checkbox"
+            checked={emailWeeklyDigest}
+            onChange={(e) => setEmailWeeklyDigest(e.target.checked)}
+          />
+          Receive Weekly Email Digest
+        </label>
+      </div>
+
       <button onClick={savePrefs}>Save Preferences</button>
     </div>
   );
