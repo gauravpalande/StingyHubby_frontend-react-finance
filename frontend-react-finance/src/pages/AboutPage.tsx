@@ -195,15 +195,11 @@ const AboutContent: React.FC<{ onClose: () => void }> = ({ onClose }) => (
 );
 
 const AboutPage: React.FC = () => {
-  const { session, isLoading } = useSessionContext();
+  const { isLoading } = useSessionContext();
   const navigate = useNavigate();
 
   const handleClose = () => {
-    if (session) {
-      navigate('/'); // ✅ logged-in users go to app home/dashboard
-    } else {
-      navigate('/'); // ✅ logged-out users go to login/home
-    }
+      navigate('/'); // ✅ users go to login/home
   };
 
   if (isLoading) {
