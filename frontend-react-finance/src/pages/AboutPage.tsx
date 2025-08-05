@@ -1,9 +1,10 @@
 import React from 'react';
 import { useSessionContext } from '@supabase/auth-helpers-react';
+import { useNavigate } from 'react-router-dom';
 
-
-const AboutContent: React.FC = () => (
+const AboutContent: React.FC<{ onClose: () => void }> = ({ onClose }) => (
   <div style={{
+    position: 'relative',
     padding: 24,
     maxWidth: 900,
     margin: '0 auto',
@@ -12,6 +13,23 @@ const AboutContent: React.FC = () => (
     borderRadius: 12,
     boxShadow: '0 2px 12px rgba(0,0,0,0.07)'
   }}>
+    {/* ✅ Close button */}
+    <button
+      onClick={onClose}
+      style={{
+        position: 'absolute',
+        top: 16,
+        right: 16,
+        border: 'none',
+        background: 'transparent',
+        fontSize: 20,
+        cursor: 'pointer',
+      }}
+      aria-label="Close"
+    >
+      ✕
+    </button>
+
     <h1 style={{ color: '#2d3748', marginBottom: 8 }}>About PennyWize</h1>
     <p style={{ color: '#4a5568', marginBottom: 32 }}>
       PennyWize helps you manage your personal finances by tracking income and expenses,
@@ -173,13 +191,21 @@ const AboutContent: React.FC = () => (
         </ul>
       </div>
     </section>
-  </div>
+      </div>
 );
 
 const AboutPage: React.FC = () => {
-  const { isLoading } = useSessionContext();
+  const { session, isLoading } = useSessionContext();
+  const navigate = useNavigate();
 
-  // ⏳ Still loading session state
+  const handleClose = () => {
+    if (session) {
+      navigate('/app'); // ✅ logged-in users go to app home/dashboard
+    } else {
+      navigate('/'); // ✅ logged-out users go to login/home
+    }
+  };
+
   if (isLoading) {
     return (
       <div style={{
@@ -195,8 +221,7 @@ const AboutPage: React.FC = () => {
     );
   }
 
-  // ✅ Render page normally — layout handled by router/layout
-  return <AboutContent />;
+  return <AboutContent onClose={handleClose} />;
 };
 
 export default AboutPage;
