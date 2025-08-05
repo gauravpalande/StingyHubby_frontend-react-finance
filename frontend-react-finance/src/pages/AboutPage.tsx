@@ -200,7 +200,7 @@ const AboutPage: React.FC = () => {
 
   const handleClose = () => {
     if (session) {
-      navigate('/app'); // ✅ logged-in users go to app home/dashboard
+      navigate('/'); // ✅ logged-in users go to app home/dashboard
     } else {
       navigate('/'); // ✅ logged-out users go to login/home
     }
