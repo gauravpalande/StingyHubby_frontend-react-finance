@@ -12,37 +12,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   console.log("📩 Digest handler started");
 
   try {
-    // ✅ Step 1: Get preferences where email_weekly_digest = true
-    const { data: prefs, error: prefError } = await supabase
-      .from('preferences')
-      .select('user_id')
-      .eq('email_weekly_digest', true);
-
-    if (prefError) {
-      console.error("❌ Error fetching preferences:", prefError.message);
-      return res.status(500).json({ error: prefError.message });
-    }
-
-    if (!prefs?.length) {
-      console.log("ℹ️ No opted-in users found.");
-      return res.status(200).json({ message: 'No opted-in users' });
-    }
-
-    const userIds = prefs.map((p) => p.user_id);
-
-    // ✅ Step 2: Fetch matching users
+    // ✅ Pull only users who opted in (preferences.email_weekly_digest = true)
     const { data: users, error: userError } = await supabase
-      .from('users')
-      .select('id, email, name')
-      .in('id', userIds);
+      .from('preferences')
+      .select(`
+        user_id,
+        email_weekly_digest,
+        users ( id, email, name )
+      `)
+      .eq('email_weekly_digest', true);
 
     if (userError || !users) {
       console.error("❌ Error fetching users:", userError?.message);
       return res.status(500).json({ error: userError?.message || 'No users found' });
     }
 
-    // ✅ Step 3: Loop through users and send digests
-    for (const user of users) {
+    for (const pref of users) {
+      const userArr = pref.users;
+      if (!userArr || !Array.isArray(userArr) || userArr.length === 0) continue; // safety check
+      const user = userArr[0];
+
       const { data: history, error: historyError } = await supabase
         .from('submissions')
         .select('*')
@@ -168,9 +157,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    return res.status(200).json({ message: 'Digest emails sent successfully' });
+    return res
+      .status(200)
+      .json({ message: 'Digest emails sent successfully' });
   } catch (err: any) {
-    console.error("💥 Unhandled error:", err.message);
+    console.error('💥 Unhandled error:', err.message);
     return res.status(500).json({ error: err.message });
   }
 }
