@@ -46,7 +46,7 @@ const AboutContent: React.FC<{ onClose: () => void }> = ({ onClose }) => (
       boxShadow: '0 1px 4px rgba(0,0,0,0.03)'
       }}>
       <a
-        href="www.youtube.com/@PennyWize1"
+        href="https://www.youtube.com/@PennyWize1"
         target="_blank"
         rel="noopener noreferrer"
         style={{ color: '#3182ce', fontWeight: 500, fontSize: 16 }}
