@@ -8,6 +8,7 @@ const PreferencesPage: React.FC = () => {
   const [graphType, setGraphType] = useState<'line' | 'bar'>('line');
   const [showSuggestions, setShowSuggestions] = useState(true);
   const [emailWeeklyDigest, setEmailWeeklyDigest] = useState(false);
+  const [emailMonthlyDigest, setEmailMonthlyDigest] = useState(false); // ✅ new state
 
   useEffect(() => {
     if (!user) return;
@@ -27,6 +28,7 @@ const PreferencesPage: React.FC = () => {
         setGraphType(data.graph_type || 'line');
         setShowSuggestions(data.show_suggestions ?? true);
         setEmailWeeklyDigest(data.email_weekly_digest ?? false);
+        setEmailMonthlyDigest(data.email_monthly_digest ?? false); // ✅ load value
       }
     };
     loadPrefs();
@@ -41,6 +43,7 @@ const PreferencesPage: React.FC = () => {
         graph_type: graphType,
         show_suggestions: showSuggestions,
         email_weekly_digest: emailWeeklyDigest,
+        email_monthly_digest: emailMonthlyDigest, // ✅ save value
       }, { onConflict: 'user_id' });
 
     if (error) {
@@ -82,6 +85,17 @@ const PreferencesPage: React.FC = () => {
             onChange={(e) => setEmailWeeklyDigest(e.target.checked)}
           />
           Receive Weekly Email Digest
+        </label>
+      </div>
+
+      <div style={{ marginBottom: 20 }}>
+        <label>
+          <input
+            type="checkbox"
+            checked={emailMonthlyDigest}
+            onChange={(e) => setEmailMonthlyDigest(e.target.checked)}
+          />
+          Receive Monthly Email Report
         </label>
       </div>
 
