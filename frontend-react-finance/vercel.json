@@ -9,7 +9,7 @@
     },
     {
       "path": "/api/send-monthly-report",
-      "Schedule": "0 9 1 * *"
+      "schedule": "0 9 1 * *"
     }
   ]
 }
