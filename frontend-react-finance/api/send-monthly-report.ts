@@ -43,12 +43,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // ✅ Step 3: Loop through users and send digests
     for (const user of users) {
+      // Get all submission entries of the user for the previous month
+      const now = new Date();
+      const firstDayPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const lastDayPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+
       const { data: history, error: historyError } = await supabase
         .from('submissions')
         .select('*')
         .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(10);
+        .gte('created_at', firstDayPrevMonth.toISOString())
+        .lte('created_at', lastDayPrevMonth.toISOString())
+        .order('created_at', { ascending: false });
 
       if (historyError || !history || history.length === 0) continue;
 
