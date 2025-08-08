@@ -128,7 +128,7 @@ const HomePage: React.FC = () => {
       <div
         style={{
           width: 'fit-content',
-          minWidth: 280,
+          minWidth: 320,
           padding: 32,
           backgroundColor: '#f8f9fa',
           borderLeft: '1px solid #dee2e6',
@@ -136,21 +136,33 @@ const HomePage: React.FC = () => {
           flexDirection: 'column',
           justifyContent: 'center',
           alignItems: 'flex-start',
+          gap: 24,
         }}
       >
-        <h2 style={{ marginBottom: '1rem' }}>📋 Features</h2>
-        <ul style={{ fontSize: '1rem', lineHeight: '1.8', paddingLeft: 16 }}>
-          <li>🔐 Secure Google login</li>
-          <li>📥 Update and track finances</li>
-          <li>📊 Visualize income & expenses</li>
-          <li>🧾 Edit/delete past entries</li>
-          <li>💡 AI-powered suggestions</li>
-          <li>🎯 Set savings goals</li>
-          <li>📬 Digest emails (weekly/monthly)</li>
-          <li>📤 Export as CSV or PDF</li>
-          <li>🎨 Customize your view</li>
-          <li>🐞 Submit feedback or bugs</li>
-        </ul>
+        {/* Free Features */}
+        <section>
+          <h2 style={{ marginBottom: '0.75rem' }}>Free Features</h2>
+          <ul style={{ fontSize: '1rem', lineHeight: '1.8', paddingLeft: 16 }}>
+            <li>🔐 Secure Google login</li>
+            <li>📥 Update and track finances</li>
+            <li>📊 Visualize income & expenses</li>
+            <li>🧾 Edit/delete past entries</li>
+            <li>💡 AI-powered suggestions</li>
+            <li>🎯 Set/View savings goals</li>
+            <li>📬 Digest emails (weekly/monthly)</li>
+            <li>📤 Export as CSV or PDF</li>
+            <li>🎨 Customize your view</li>
+            <li>🐞 Submit feedback or bugs</li>
+          </ul>
+        </section>
+
+        {/* Paid Features */}
+        <section>
+          <h2 style={{ marginBottom: '0.75rem' }}>Paid Features</h2>
+          <ul style={{ fontSize: '1rem', lineHeight: '1.8', paddingLeft: 16 }}>
+            <li>View savings goals progress</li>
+          </ul>
+        </section>
       </div>
     </div>
   );
