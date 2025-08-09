@@ -22,21 +22,29 @@ const EditableFinancialHistory: React.FC = () => {
   const [editing, setEditing] = useState<{ [key: string]: any }>({});
   const [loading, setLoading] = useState(true);
   const [chartType, setChartType] = useState<'line' | 'bar'>('line');
+  const [isPaid, setIsPaid] = useState<boolean>(false);
   const printRef = useRef<HTMLDivElement>(null);
 
   const fetchHistory = async () => {
     if (!user) return;
     setLoading(true);
 
-    const [historyRes, prefsRes] = await Promise.all([
-      supabase.from('submissions')
+    const [historyRes, prefsRes, paidRes] = await Promise.all([
+      supabase
+        .from('submissions')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: true }),
-      supabase.from('preferences')
+      supabase
+        .from('preferences')
         .select('graph_type')
         .eq('user_id', user.id)
-        .single()
+        .single(),
+      supabase
+        .from('users')
+        .select('paid_user')
+        .eq('id', user.id)
+        .single(),
     ]);
 
     if (historyRes.data) {
@@ -48,20 +56,21 @@ const EditableFinancialHistory: React.FC = () => {
       );
     }
 
-    if (prefsRes.data?.graph_type === 'bar') {
-      setChartType('bar');
-    } else {
-      setChartType('line');
-    }
+    if (prefsRes.data?.graph_type === 'bar') setChartType('bar');
+    else setChartType('line');
 
+    setIsPaid(!!paidRes.data?.paid_user);
     setLoading(false);
   };
 
   useEffect(() => {
     fetchHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const updateRow = (id: string, field: string, value: string) => {
+    // Even if free users change inputs (should be disabled), guard anyway
+    if (!isPaid) return;
     setEditing((prev) => ({
       ...prev,
       [id]: { ...prev[id], [field]: parseFloat(value) },
@@ -69,6 +78,7 @@ const EditableFinancialHistory: React.FC = () => {
   };
 
   const saveRow = async (id: string) => {
+    if (!isPaid) return;
     const changes = editing[id];
     if (!changes) return;
 
@@ -85,16 +95,17 @@ const EditableFinancialHistory: React.FC = () => {
   };
 
   const deleteRow = async (id: string) => {
+    if (!isPaid) return;
     const { error } = await supabase.from('submissions').delete().eq('id', id);
     if (!error) fetchHistory();
     else console.error('Error deleting row:', error.message);
   };
 
   const exportToCSV = () => {
-    if (!history.length) return;
+    if (!isPaid || !history.length) return;
 
     const headers = ['Date', 'Income', 'Checking', 'Emergency', 'Health', 'Retirement', 'Credit Cards', 'Mortgage', 'Car Payments', 'Utilities'];
-    const rows = history.map(row =>
+    const rows = history.map((row) =>
       [
         row.timestamp,
         row.income,
@@ -121,7 +132,7 @@ const EditableFinancialHistory: React.FC = () => {
   };
 
   const exportToPDF = () => {
-    if (!printRef.current) return;
+    if (!isPaid || !printRef.current) return;
     const originalContent = document.body.innerHTML;
     const printContent = printRef.current.innerHTML;
 
@@ -137,10 +148,17 @@ const EditableFinancialHistory: React.FC = () => {
     <div style={{ marginTop: 40 }} ref={printRef}>
       <h3>Financial History</h3>
 
-      <div style={{ marginBottom: 16 }}>
-        <button onClick={exportToCSV}>📁 Export CSV</button>
-        <button onClick={exportToPDF} style={{ marginLeft: 10 }}>🖨 Export PDF</button>
-      </div>
+      {/* Premium Export Buttons */}
+      {isPaid ? (
+        <div style={{ marginBottom: 16 }}>
+          <button onClick={exportToCSV}>📁 Export CSV</button>
+          <button onClick={exportToPDF} style={{ marginLeft: 10 }}>🖨 Export PDF</button>
+        </div>
+      ) : (
+        <div style={{ marginBottom: 16, fontSize: 14, color: '#6c757d' }}>
+          🔒 <strong>Premium:</strong> Export CSV/PDF is available for paid users.
+        </div>
+      )}
 
       {loading ? (
         <p>📊 Loading chart data...</p>
@@ -156,11 +174,7 @@ const EditableFinancialHistory: React.FC = () => {
               <Tooltip />
               <Legend />
               {chartKeys.map((key, index) => (
-                <Bar
-                  key={key}
-                  dataKey={key}
-                  fill={COLORS[index % COLORS.length]}
-                />
+                <Bar key={key} dataKey={key} fill={COLORS[index % COLORS.length]} />
               ))}
             </BarChart>
           ) : (
@@ -171,12 +185,7 @@ const EditableFinancialHistory: React.FC = () => {
               <Tooltip />
               <Legend />
               {chartKeys.map((key, index) => (
-                <Line
-                  key={key}
-                  type="monotone"
-                  dataKey={key}
-                  stroke={COLORS[index % COLORS.length]}
-                />
+                <Line key={key} type="monotone" dataKey={key} stroke={COLORS[index % COLORS.length]} />
               ))}
             </LineChart>
           )}
@@ -204,12 +213,20 @@ const EditableFinancialHistory: React.FC = () => {
                       type="number"
                       value={(editing[row.id]?.[key] ?? row[key]) || 0}
                       onChange={(e) => updateRow(row.id, key, e.target.value)}
+                      disabled={!isPaid}
+                      style={!isPaid ? { backgroundColor: '#f1f3f5', cursor: 'not-allowed' } : undefined}
                     />
                   </td>
                 ))}
                 <td>
-                  <button onClick={() => saveRow(row.id)}>💾</button>
-                  <button onClick={() => deleteRow(row.id)}>🗑️</button>
+                  {isPaid ? (
+                    <>
+                      <button onClick={() => saveRow(row.id)} title="Save changes">💾</button>
+                      <button onClick={() => deleteRow(row.id)} title="Delete entry" style={{ marginLeft: 8 }}>🗑️</button>
+                    </>
+                  ) : (
+                    <span style={{ color: '#6c757d' }}>🔒 Premium</span>
+                  )}
                 </td>
               </tr>
             ))}
