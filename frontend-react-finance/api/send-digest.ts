@@ -9,40 +9,53 @@ const supabase = createClient(
 const resend = new Resend(process.env.RESEND_API_KEY!);
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  console.log("📩 Digest handler started");
+  console.log('📩 Digest handler started');
 
   try {
-    // ✅ Step 1: Get preferences where email_weekly_digest = true
+    // ✅ 1) Get users who opted in to weekly digest
     const { data: prefs, error: prefError } = await supabase
       .from('preferences')
       .select('user_id')
       .eq('email_weekly_digest', true);
 
     if (prefError) {
-      console.error("❌ Error fetching preferences:", prefError.message);
+      console.error('❌ Error fetching preferences:', prefError.message);
       return res.status(500).json({ error: prefError.message });
     }
 
     if (!prefs?.length) {
-      console.log("ℹ️ No opted-in users found.");
+      console.log('ℹ️ No opted-in users found.');
       return res.status(200).json({ message: 'No opted-in users' });
     }
 
     const userIds = prefs.map((p) => p.user_id);
 
-    // ✅ Step 2: Fetch matching users
+    // ✅ 2) Fetch matching users including paid flag
     const { data: users, error: userError } = await supabase
       .from('users')
-      .select('id, email, name')
+      .select('id, email, name, paid_user')
       .in('id', userIds);
 
-    if (userError || !users) {
-      console.error("❌ Error fetching users:", userError?.message);
-      return res.status(500).json({ error: userError?.message || 'No users found' });
+    if (userError || !users?.length) {
+      console.error('❌ Error fetching users:', userError?.message);
+      return res
+        .status(500)
+        .json({ error: userError?.message || 'No users found' });
     }
 
-    // ✅ Step 3: Loop through users and send digests
+    // Helper: basic CSV from rows
+    function convertToCSV(rows: any[]): string {
+      if (!rows.length) return '';
+      const headers = Object.keys(rows[0]);
+      const escape = (value: any) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+      const headerLine = headers.join(',');
+      const lines = rows.map((row) => headers.map((h) => escape(row[h])).join(','));
+      return [headerLine, ...lines].join('\n');
+    }
+
+    // ✅ 3) Loop through users and send digests
     for (const user of users) {
+      // Pull the 10 most recent entries
       const { data: history, error: historyError } = await supabase
         .from('submissions')
         .select('*')
@@ -50,8 +63,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .order('created_at', { ascending: false })
         .limit(10);
 
-      if (historyError || !history || history.length === 0) continue;
+      if (historyError) {
+        console.error(`❌ History fetch error for ${user.email}:`, historyError.message);
+        continue;
+      }
+      if (!history || history.length === 0) {
+        console.log(`ℹ️ No history for ${user.email}, skipping.`);
+        continue;
+      }
 
+      // Metrics
       const totalIncome = history.reduce((sum, row) => sum + (row.income || 0), 0);
       const totalExpenses = history.reduce(
         (sum, row) =>
@@ -64,28 +85,36 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       );
       const savings = totalIncome - totalExpenses;
 
+      // Chart
       const chartUrl = `https://quickchart.io/chart?c=${encodeURIComponent(
         JSON.stringify({
           type: 'bar',
           data: {
-            labels: history.map((row) =>
-              new Date(row.created_at).toLocaleDateString()
-            ),
+            labels: history
+              .slice() // clone
+              .reverse() // show oldest->newest left->right
+              .map((row) => new Date(row.created_at).toLocaleDateString()),
             datasets: [
               {
                 label: 'Income',
-                data: history.map((row) => row.income || 0),
+                data: history
+                  .slice()
+                  .reverse()
+                  .map((row) => row.income || 0),
                 backgroundColor: 'rgba(54, 162, 235, 0.6)',
               },
               {
                 label: 'Expenses',
-                data: history.map(
-                  (row) =>
-                    (row.mortgage || 0) +
-                    (row.utilities || 0) +
-                    (row.carPayments || 0) +
-                    (row.creditCards || 0)
-                ),
+                data: history
+                  .slice()
+                  .reverse()
+                  .map(
+                    (row) =>
+                      (row.mortgage || 0) +
+                      (row.utilities || 0) +
+                      (row.carPayments || 0) +
+                      (row.creditCards || 0)
+                  ),
                 backgroundColor: 'rgba(255, 99, 132, 0.6)',
               },
             ],
@@ -93,40 +122,39 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         })
       )}`;
 
-      function convertToCSV(rows: any[]): string {
-        if (!rows.length) return '';
+      // ✅ Suggestions block (paid vs free)
+      let suggestionHTML = '';
+      if (user.paid_user) {
+        const latest = history[0];
+        const st = latest?.short_term_suggestion?.trim();
+        const lt = latest?.long_term_suggestion?.trim();
+        const goal = latest?.goal_suggestion?.trim();
 
-        const headers = Object.keys(rows[0]);
-        const escape = (value: any) =>
-          `"${String(value).replace(/"/g, '""')}"`;
+        const STAITips = st
+          ? `💡 Short Term AI Tip: ${st}`
+          : `💡 Short Term AI Tip: Consider reducing discretionary expenses next month to increase savings.`;
+        const LTAITips = lt
+          ? `💡 Long Term AI Tip: ${lt}`
+          : `💡 Long Term AI Tip: Consider contributing more towards your retirement savings.`;
+        const GoalAITips = goal
+          ? `💡 Goal AI Tip: ${goal}`
+          : `💡 Goal AI Tip: Consider contributing more towards your goals.`;
 
-        const headerLine = headers.join(',');
-        const lines = rows.map((row) =>
-          headers.map((h) => escape(row[h])).join(',')
-        );
-
-        return [headerLine, ...lines].join('\n');
+        suggestionHTML = `<p>${STAITips}</p><p>${LTAITips}</p><p>${GoalAITips}</p>`;
+      } else {
+        const latest = history[0];
+        const one = latest?.oneline_suggestion?.trim();
+        const oneLineTip = one
+          ? `💡 AI Tip: ${one}`
+          : `💡 AI Tip: Keep tracking your finances to get personalized insights.`;
+        suggestionHTML = `<p>${oneLineTip}</p>`;
       }
 
-      const csvContent = convertToCSV(history);
-
-      const latestSTSuggestion = history[0]?.short_term_suggestion?.trim();
-      const latestLTSuggestion = history[0]?.long_term_suggestion?.trim();
-      const latestGoalSuggestion = history[0]?.goal_suggestion?.trim();
-
-      const STAITips = latestSTSuggestion
-        ? `💡 Short Term AI Tip: ${latestSTSuggestion}`
-        : `💡 Short Term AI Tip: Consider reducing discretionary expenses next month to increase savings.`;
-      const LTAITips = latestLTSuggestion
-        ? `💡 Long Term AI Tip: ${latestLTSuggestion}`
-        : `💡 Long Term AI Tip: Consider contributing more towards your retirement savings.`;
-      const GoalAITips = latestGoalSuggestion
-        ? `💡 Goal AI Tip: ${latestGoalSuggestion}`
-        : `💡 Goal AI Tip: Consider contributing more towards your goals.`;
-
+      // Email HTML
+      const displayName = user.name || user.email;
       const htmlContent = `
         <div style="font-family: sans-serif">
-          <p>Hi ${user.name || user.email},</p>
+          <p>Hi ${displayName},</p>
           <p>Here’s your weekly financial digest:</p>
           <ul>
             <li><strong>📥 Total Income:</strong> $${totalIncome.toFixed(2)}</li>
@@ -134,12 +162,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             <li><strong>💰 Estimated Savings:</strong> $${savings.toFixed(2)}</li>
           </ul>
           <p><img src="${chartUrl}" alt="Financial Chart" /></p>
-          <p>${STAITips}</p>
-          <p>${LTAITips}</p>
-          <p>${GoalAITips}</p>
+          ${suggestionHTML}
           <p><small>To unsubscribe, update your preferences at https://pennywize.vercel.app/.</small></p>
         </div>
       `;
+
+      // ✅ Attach CSV only for paid users (keep exports premium)
+      const attachments = user.paid_user
+        ? [
+            {
+              filename: 'history.csv',
+              content: convertToCSV(history),
+            },
+          ]
+        : undefined;
 
       try {
         const response = await resend.emails.send({
@@ -147,12 +183,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           to: user.email,
           subject: 'Your Weekly Financial Digest',
           html: htmlContent,
-          attachments: [
-            {
-              filename: 'history.csv',
-              content: csvContent,
-            },
-          ],
+          ...(attachments ? { attachments } : {}),
         });
 
         await supabase.from('email_logs').insert({
@@ -170,7 +201,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(200).json({ message: 'Digest emails sent successfully' });
   } catch (err: any) {
-    console.error("💥 Unhandled error:", err.message);
+    console.error('💥 Unhandled error:', err.message);
     return res.status(500).json({ error: err.message });
   }
 }
