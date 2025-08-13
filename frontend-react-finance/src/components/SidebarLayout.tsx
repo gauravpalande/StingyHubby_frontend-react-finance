@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import {
@@ -12,7 +12,7 @@ import {
   FaCog,
   FaBug,
 } from 'react-icons/fa';
-import { useSession } from '@supabase/auth-helpers-react';
+import { useSession, useSupabaseClient } from '@supabase/auth-helpers-react';
 
 interface SidebarLayoutProps {
   children?: ReactNode;
@@ -27,7 +27,7 @@ const navItems = [
   { to: '/app/breakdown', icon: <FaChartPie size={20} />, label: 'Expense Breakdown' },
   { to: '/app/suggestions', icon: <FaRobot size={20} />, label: 'GPT Suggestions' },
   { to: '/app/preferences', icon: <FaCog size={20} />, label: 'Preferences' },
-  { to: '/app/feedback', icon: <FaBug size={20} />, label: 'Submit Feedback' },
+  { to: '/app/feedback', icon: <FaBug size={20} />, label: 'Submit Feedback', paidOnly: true },
   { to: '/app/about', icon: <FaInfoCircle size={20} />, label: 'About' },
 ];
 
@@ -36,15 +36,45 @@ const expandedWidth = 200;
 
 const SidebarLayout: React.FC<SidebarLayoutProps> = ({ children }) => {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
+  const [isPaid, setIsPaid] = useState(false);
+
+  const supabase = useSupabaseClient();
+  const session = useSession();
+  const user = session?.user;
+  const name = user?.user_metadata?.full_name || user?.email;
+  const avatar = user?.user_metadata?.avatar_url;
+
+  useEffect(() => {
+    const fetchPaidStatus = async () => {
+      if (!user) {
+        setIsPaid(false);
+        return;
+      }
+      const { data, error } = await supabase
+        .from('users')
+        .select('paid_user')
+        .eq('id', user.id)
+        .single();
+
+      if (error) {
+        console.error('Error fetching paid status:', error.message);
+        setIsPaid(false);
+      } else {
+        setIsPaid(!!data?.paid_user);
+      }
+    };
+
+    fetchPaidStatus();
+  }, [user, supabase]);
 
   const handleToggle = (idx: number) => {
     setExpandedIndex(expandedIndex === idx ? null : idx);
   };
 
-  const session = useSession();
-  const user = session?.user;
-  const name = user?.user_metadata?.full_name || user?.email;
-  const avatar = user?.user_metadata?.avatar_url;
+  const visibleNavItems = navItems.filter((item) => {
+    if (item.paidOnly && !isPaid) return false;
+    return true;
+  });
 
   return (
     <div style={{ display: 'flex', height: '100vh' }}>
@@ -60,14 +90,28 @@ const SidebarLayout: React.FC<SidebarLayoutProps> = ({ children }) => {
         }}
       >
         <div style={{ marginBottom: 16 }}>
-          <span style={{ fontWeight: 'bold', fontSize: 24, display: expandedIndex !== null ? 'inline' : 'none' }}>
+          <span
+            style={{
+              fontWeight: 'bold',
+              fontSize: 24,
+              display: expandedIndex !== null ? 'inline' : 'none',
+            }}
+          >
             PennyWize
           </span>
           <span style={{ display: expandedIndex === null ? 'inline' : 'none' }}>💰</span>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 0, width: '100%', alignItems: 'center' }}>
-          {navItems.map((item, idx) => (
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 0,
+            width: '100%',
+            alignItems: 'center',
+          }}
+        >
+          {visibleNavItems.map((item, idx) => (
             <NavLink
               key={item.to}
               to={item.to}
