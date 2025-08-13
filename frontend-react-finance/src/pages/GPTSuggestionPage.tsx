@@ -27,10 +27,12 @@ const GPTSuggestionPage = () => {
         return;
       }
 
-      // Fetch latest suggestions
+      // 1) Fetch the latest suggestions, INCLUDING oneline_suggestion
       const { data: sugg, error: suggErr } = await supabase
         .from('submissions')
-        .select('short_term_suggestion, long_term_suggestion, goal_suggestion')
+        .select(
+          'short_term_suggestion, long_term_suggestion, goal_suggestion, oneline_suggestion'
+        )
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(1)
@@ -41,12 +43,13 @@ const GPTSuggestionPage = () => {
       const shortS = sugg?.short_term_suggestion || '';
       const longS = sugg?.long_term_suggestion || '';
       const goalS = sugg?.goal_suggestion || '';
+      const oneLineDB = (sugg?.oneline_suggestion || '').toString().trim();
 
       setShortTermSuggestion(shortS);
       setLongTermSuggestion(longS);
       setGoalsSuggestion(goalS);
 
-      // Fetch paid flag
+      // 2) Fetch paid flag
       const { data: paidRow, error: paidErr } = await supabase
         .from('users')
         .select('paid_user')
@@ -58,12 +61,13 @@ const GPTSuggestionPage = () => {
       const paid = !!paidRow?.paid_user;
       setIsPaid(paid);
 
-      // Build one-line suggestion for free users (collapse whitespace to one line)
-      const single =
-        (shortS || longS || goalS || 'No suggestions found.')
-          .replace(/\s+/g, ' ')
-          .trim();
-      setOneLineSuggestion(single);
+      // 3) For free users, prefer the dedicated one-line suggestion from DB.
+      //    Fallback to a collapsed version of other fields if it's empty.
+      const fallbackCollapsed = (shortS || longS || goalS || 'No suggestions found.')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      setOneLineSuggestion(oneLineDB || fallbackCollapsed);
 
       setLoading(false);
     };
