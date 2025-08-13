@@ -30,10 +30,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const userIds = prefs.map((p) => p.user_id);
 
-    // ✅ Step 2: Fetch matching users
+    // ✅ Step 2: Fetch matching users including paid flag
     const { data: users, error: userError } = await supabase
       .from('users')
-      .select('id, email, name')
+      .select('id, email, name, paid_user')
       .in('id', userIds);
 
     if (userError || !users) {
@@ -41,9 +41,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(500).json({ error: userError?.message || 'No users found' });
     }
 
+    // CSV helper
+    function convertToCSV(rows: any[]): string {
+      if (!rows.length) return '';
+      const headers = Object.keys(rows[0]);
+      const escape = (value: any) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+      const headerLine = headers.join(',');
+      const lines = rows.map((row) => headers.map((h) => escape(row[h])).join(','));
+      return [headerLine, ...lines].join('\n');
+    }
+
     // ✅ Step 3: Loop through users and send digests
     for (const user of users) {
-      // Get all submission entries of the user for the previous month
+      // Get all submissions for previous month
       const now = new Date();
       const firstDayPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
       const lastDayPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
@@ -99,37 +109,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         })
       )}`;
 
-      function convertToCSV(rows: any[]): string {
-        if (!rows.length) return '';
+      // ✅ Suggestion logic
+      let suggestionHTML = '';
+      if (user.paid_user) {
+        const latest = history[0];
+        const st = latest?.short_term_suggestion?.trim();
+        const lt = latest?.long_term_suggestion?.trim();
+        const goal = latest?.goal_suggestion?.trim();
 
-        const headers = Object.keys(rows[0]);
-        const escape = (value: any) =>
-          `"${String(value).replace(/"/g, '""')}"`;
+        const STAITips = st
+          ? `💡 Short Term AI Tip: ${st}`
+          : `💡 Short Term AI Tip: Consider reducing discretionary expenses next month to increase savings.`;
+        const LTAITips = lt
+          ? `💡 Long Term AI Tip: ${lt}`
+          : `💡 Long Term AI Tip: Consider contributing more towards your retirement savings.`;
+        const GoalAITips = goal
+          ? `💡 Goal AI Tip: ${goal}`
+          : `💡 Goal AI Tip: Consider contributing more towards your goals.`;
 
-        const headerLine = headers.join(',');
-        const lines = rows.map((row) =>
-          headers.map((h) => escape(row[h])).join(',')
-        );
-
-        return [headerLine, ...lines].join('\n');
+        suggestionHTML = `<p>${STAITips}</p><p>${LTAITips}</p><p>${GoalAITips}</p>`;
+      } else {
+        const latest = history[0];
+        const one = latest?.oneline_suggestion?.trim();
+        const oneLineTip = one
+          ? `💡 AI Tip: ${one}`
+          : `💡 AI Tip: Keep tracking your finances to get personalized insights.`;
+        suggestionHTML = `<p>${oneLineTip}</p>`;
       }
 
-      const csvContent = convertToCSV(history);
-
-      const latestSTSuggestion = history[0]?.short_term_suggestion?.trim();
-      const latestLTSuggestion = history[0]?.long_term_suggestion?.trim();
-      const latestGoalSuggestion = history[0]?.goal_suggestion?.trim();
-
-      const STAITips = latestSTSuggestion
-        ? `💡 Short Term AI Tip: ${latestSTSuggestion}`
-        : `💡 Short Term AI Tip: Consider reducing discretionary expenses next month to increase savings.`;
-      const LTAITips = latestLTSuggestion
-        ? `💡 Long Term AI Tip: ${latestLTSuggestion}`
-        : `💡 Long Term AI Tip: Consider contributing more towards your retirement savings.`;
-      const GoalAITips = latestGoalSuggestion
-        ? `💡 Goal AI Tip: ${latestGoalSuggestion}`
-        : `💡 Goal AI Tip: Consider contributing more towards your goals.`;
-
+      // Build HTML email
       const htmlContent = `
         <div style="font-family: sans-serif">
           <p>Hi ${user.name || user.email},</p>
@@ -140,12 +148,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             <li><strong>💰 Estimated Savings:</strong> $${savings.toFixed(2)}</li>
           </ul>
           <p><img src="${chartUrl}" alt="Financial Chart" /></p>
-          <p>${STAITips}</p>
-          <p>${LTAITips}</p>
-          <p>${GoalAITips}</p>
+          ${suggestionHTML}
           <p><small>To unsubscribe, update your preferences at https://pennywize.vercel.app/.</small></p>
         </div>
       `;
+
+      // ✅ Attach CSV only for paid users
+      const attachments = user.paid_user
+        ? [
+            {
+              filename: 'history.csv',
+              content: convertToCSV(history),
+            },
+          ]
+        : undefined;
 
       try {
         const response = await resend.emails.send({
@@ -153,12 +169,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           to: user.email,
           subject: 'Your Monthly Financial Digest',
           html: htmlContent,
-          attachments: [
-            {
-              filename: 'history.csv',
-              content: csvContent,
-            },
-          ],
+          ...(attachments ? { attachments } : {}),
         });
 
         await supabase.from('email_logs').insert({
