@@ -8,11 +8,13 @@ const PreferencesPage: React.FC = () => {
   const [graphType, setGraphType] = useState<'line' | 'bar'>('line');
   const [showSuggestions, setShowSuggestions] = useState(true);
   const [emailWeeklyDigest, setEmailWeeklyDigest] = useState(false);
-  const [emailMonthlyDigest, setEmailMonthlyDigest] = useState(false); // ✅ new state
+  const [emailMonthlyDigest, setEmailMonthlyDigest] = useState(false);
+  const [isPaid, setIsPaid] = useState(false); // ✅ track paid status
 
   useEffect(() => {
     if (!user) return;
     const loadPrefs = async () => {
+      // Load preferences
       const { data, error } = await supabase
         .from('preferences')
         .select('*')
@@ -28,7 +30,20 @@ const PreferencesPage: React.FC = () => {
         setGraphType(data.graph_type || 'line');
         setShowSuggestions(data.show_suggestions ?? true);
         setEmailWeeklyDigest(data.email_weekly_digest ?? false);
-        setEmailMonthlyDigest(data.email_monthly_digest ?? false); // ✅ load value
+        setEmailMonthlyDigest(data.email_monthly_digest ?? false);
+      }
+
+      // Load paid_user flag
+      const { data: paidRow, error: paidErr } = await supabase
+        .from('users')
+        .select('paid_user')
+        .eq('id', user.id)
+        .single();
+
+      if (paidErr) {
+        console.error('❌ Error fetching paid status:', paidErr.message);
+      } else {
+        setIsPaid(!!paidRow?.paid_user);
       }
     };
     loadPrefs();
@@ -38,13 +53,16 @@ const PreferencesPage: React.FC = () => {
     if (!user) return;
     const { error } = await supabase
       .from('preferences')
-      .upsert({
-        user_id: user.id,
-        graph_type: graphType,
-        show_suggestions: showSuggestions,
-        email_weekly_digest: emailWeeklyDigest,
-        email_monthly_digest: emailMonthlyDigest, // ✅ save value
-      }, { onConflict: 'user_id' });
+      .upsert(
+        {
+          user_id: user.id,
+          graph_type: graphType,
+          show_suggestions: showSuggestions,
+          email_weekly_digest: emailWeeklyDigest,
+          email_monthly_digest: emailMonthlyDigest, // ✅ will save only current state
+        },
+        { onConflict: 'user_id' }
+      );
 
     if (error) {
       alert('❌ Failed to save preferences');
@@ -60,7 +78,10 @@ const PreferencesPage: React.FC = () => {
 
       <div style={{ marginBottom: 20 }}>
         <label>Chart Type: </label>
-        <select value={graphType} onChange={(e) => setGraphType(e.target.value as 'line' | 'bar')}>
+        <select
+          value={graphType}
+          onChange={(e) => setGraphType(e.target.value as 'line' | 'bar')}
+        >
           <option value="line">Line Chart</option>
           <option value="bar">Bar Chart</option>
         </select>
@@ -88,15 +109,17 @@ const PreferencesPage: React.FC = () => {
         </label>
       </div>
 
-      <div style={{ marginBottom: 20 }}>
-        <label>
+      <div style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 6 }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <input
             type="checkbox"
             checked={emailMonthlyDigest}
             onChange={(e) => setEmailMonthlyDigest(e.target.checked)}
+            disabled={!isPaid} // ✅ disable if not paid
           />
           Receive Monthly Email Report
         </label>
+        {!isPaid && <span title="Premium feature">🔒</span>}
       </div>
 
       <button onClick={savePrefs}>Save Preferences</button>
