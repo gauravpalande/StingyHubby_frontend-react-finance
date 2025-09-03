@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useSupabaseClient, useUser } from '@supabase/auth-helpers-react';
 
 const PreferencesPage: React.FC = () => {
@@ -9,7 +9,24 @@ const PreferencesPage: React.FC = () => {
   const [showSuggestions, setShowSuggestions] = useState(true);
   const [emailWeeklyDigest, setEmailWeeklyDigest] = useState(false);
   const [emailMonthlyDigest, setEmailMonthlyDigest] = useState(false);
-  const [isPaid, setIsPaid] = useState(false); // ✅ track paid status
+  const [isPaid, setIsPaid] = useState(false);
+
+  // UI helpers
+  const [busy, setBusy] = useState<'checkout' | 'portal' | 'save' | null>(null);
+  const [banner, setBanner] = useState<{ type: 'success' | 'warning' | 'error'; text: string } | null>(null);
+
+  const urlSearchParams = useMemo(() => new URLSearchParams(window.location.search), []);
+  const upgradeParam = urlSearchParams.get('upgrade');
+
+  const fetchPaidStatus = async () => {
+    if (!user) return;
+    const { data, error } = await supabase
+      .from('users')
+      .select('paid_user')
+      .eq('id', user.id)
+      .single();
+    if (!error) setIsPaid(!!data?.paid_user);
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -23,7 +40,6 @@ const PreferencesPage: React.FC = () => {
 
       if (error && error.code !== 'PGRST116') {
         console.error('❌ Error loading preferences:', error.message);
-        return;
       }
 
       if (data) {
@@ -33,42 +49,116 @@ const PreferencesPage: React.FC = () => {
         setEmailMonthlyDigest(data.email_monthly_digest ?? false);
       }
 
-      // Load paid_user flag
-      const { data: paidRow, error: paidErr } = await supabase
-        .from('users')
-        .select('paid_user')
-        .eq('id', user.id)
-        .single();
-
-      if (paidErr) {
-        console.error('❌ Error fetching paid status:', paidErr.message);
-      } else {
-        setIsPaid(!!paidRow?.paid_user);
-      }
+      await fetchPaidStatus();
     };
     loadPrefs();
   }, [user, supabase]);
 
+  // Handle return from Stripe Checkout
+  useEffect(() => {
+    if (!upgradeParam) return;
+
+    if (upgradeParam === 'success') {
+      setBanner({ type: 'success', text: 'Upgrade successful! Thanks for supporting PennyWize 💚' });
+      // Refetch paid flag (webhook should have updated users.paid_user)
+      fetchPaidStatus();
+    } else if (upgradeParam === 'cancelled') {
+      setBanner({ type: 'warning', text: 'Checkout cancelled. You can upgrade any time.' });
+    }
+
+    // Clean the query param from the URL
+    const url = new URL(window.location.href);
+    url.searchParams.delete('upgrade');
+    window.history.replaceState({}, '', url.toString());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const savePrefs = async () => {
     if (!user) return;
-    const { error } = await supabase
-      .from('preferences')
-      .upsert(
-        {
-          user_id: user.id,
-          graph_type: graphType,
-          show_suggestions: showSuggestions,
-          email_weekly_digest: emailWeeklyDigest,
-          email_monthly_digest: emailMonthlyDigest, // ✅ will save only current state
-        },
-        { onConflict: 'user_id' }
-      );
+    try {
+      setBusy('save');
+      // Server-side guard: force monthly digest off for free users
+      const monthly = isPaid ? emailMonthlyDigest : false;
 
-    if (error) {
-      alert('❌ Failed to save preferences');
-      console.error(error);
-    } else {
-      alert('✅ Preferences saved!');
+      const { error } = await supabase
+        .from('preferences')
+        .upsert(
+          {
+            user_id: user.id,
+            graph_type: graphType,
+            show_suggestions: showSuggestions,
+            email_weekly_digest: emailWeeklyDigest,
+            email_monthly_digest: monthly,
+          },
+          { onConflict: 'user_id' }
+        );
+
+      if (error) {
+        console.error(error);
+        setBanner({ type: 'error', text: 'Failed to save preferences.' });
+      } else {
+        if (!isPaid && emailMonthlyDigest) {
+          setEmailMonthlyDigest(false); // reflect the guard locally
+        }
+        setBanner({ type: 'success', text: 'Preferences saved!' });
+      }
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  // Client helpers to start checkout/open portal
+  const startCheckout = async (userId: string, email: string) => {
+    const r = await fetch('/api/checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, email }),
+    });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      throw new Error(err.error || 'Checkout failed');
+    }
+    const { url } = await r.json();
+    if (!url) throw new Error('No checkout URL returned');
+    window.location.href = url;
+  };
+
+  const openPortal = async (userId: string) => {
+    const r = await fetch('/api/portal', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId }),
+    });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      throw new Error(err.error || 'Portal failed');
+    }
+    const { url } = await r.json();
+    if (!url) throw new Error('No portal URL returned');
+    window.location.href = url;
+  };
+
+  const handleUpgrade = async () => {
+    if (!user?.id || !user?.email) return;
+    try {
+      setBusy('checkout');
+      await startCheckout(user.id, user.email);
+    } catch (e: any) {
+      setBanner({ type: 'error', text: e.message || 'Failed to start checkout' });
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const handleManageBilling = async () => {
+    if (!user?.id) return;
+    try {
+      setBusy('portal');
+      await openPortal(user.id);
+    } catch (e: any) {
+      setBanner({ type: 'error', text: e.message || 'Failed to open billing portal' });
+    } finally {
+      setBusy(null);
     }
   };
 
@@ -76,6 +166,27 @@ const PreferencesPage: React.FC = () => {
     <div style={{ maxWidth: 600, margin: '0 auto', padding: 24 }}>
       <h2>User Preferences</h2>
 
+      {/* Banner */}
+      {banner && (
+        <div
+          role="status"
+          style={{
+            marginBottom: 16,
+            padding: '10px 12px',
+            borderRadius: 8,
+            background:
+              banner.type === 'success' ? '#e6ffed' :
+              banner.type === 'warning' ? '#fff8e1' : '#ffebee',
+            border:
+              banner.type === 'success' ? '1px solid #34c36b' :
+              banner.type === 'warning' ? '1px solid #ffb300' : '1px solid #f44336',
+          }}
+        >
+          {banner.text}
+        </div>
+      )}
+
+      {/* Preferences */}
       <div style={{ marginBottom: 20 }}>
         <label>Chart Type: </label>
         <select
@@ -94,7 +205,7 @@ const PreferencesPage: React.FC = () => {
             checked={showSuggestions}
             onChange={(e) => setShowSuggestions(e.target.checked)}
           />
-          Show GPT Suggestions
+          {' '}Show GPT Suggestions
         </label>
       </div>
 
@@ -105,7 +216,7 @@ const PreferencesPage: React.FC = () => {
             checked={emailWeeklyDigest}
             onChange={(e) => setEmailWeeklyDigest(e.target.checked)}
           />
-          Receive Weekly Email Digest
+          {' '}Receive Weekly Email Digest
         </label>
       </div>
 
@@ -115,14 +226,69 @@ const PreferencesPage: React.FC = () => {
             type="checkbox"
             checked={emailMonthlyDigest}
             onChange={(e) => setEmailMonthlyDigest(e.target.checked)}
-            disabled={!isPaid} // ✅ disable if not paid
+            disabled={!isPaid}
           />
-          Receive Monthly Email Report
+          {' '}Receive Monthly Email Report
         </label>
         {!isPaid && <span title="Premium feature">🔒</span>}
       </div>
 
-      <button onClick={savePrefs}>Save Preferences</button>
+      <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
+        <button
+          onClick={savePrefs}
+          disabled={busy !== null}
+          aria-busy={busy === 'save'}
+          style={{
+            padding: '10px 14px',
+            borderRadius: 8,
+            border: '1px solid #198754',
+            background: '#198754',
+            color: '#fff',
+            fontWeight: 600,
+            cursor: busy ? 'wait' : 'pointer',
+          }}
+        >
+          {busy === 'save' ? 'Saving…' : 'Save Preferences'}
+        </button>
+
+        {!isPaid ? (
+          <button
+            onClick={handleUpgrade}
+            disabled={busy !== null || !user}
+            aria-busy={busy === 'checkout'}
+            style={{
+              padding: '10px 14px',
+              borderRadius: 8,
+              border: '1px solid #0d6efd',
+              background: '#0d6efd',
+              color: '#fff',
+              cursor: busy ? 'wait' : 'pointer',
+              fontWeight: 600,
+            }}
+            title="Upgrade to Premium for $0.99/month"
+          >
+            {busy === 'checkout' ? 'Starting checkout…' : 'Upgrade to Premium ($0.99/mo)'}
+          </button>
+        ) : (
+          <button
+            onClick={handleManageBilling}
+            disabled={busy !== null || !user}
+            aria-busy={busy === 'portal'}
+            style={{
+              padding: '10px 14px',
+              borderRadius: 8,
+              border: '1px solid #6c757d',
+              background: '#f8f9fa',
+              color: '#212529',
+              cursor: busy ? 'wait' : 'pointer',
+              fontWeight: 600,
+            }}
+            title="Open Stripe billing portal"
+          >
+            {busy === 'portal' ? 'Opening portal…' : 'Manage Billing'}
+          </button>
+        )}
+      </div>
     </div>
   );
 };
