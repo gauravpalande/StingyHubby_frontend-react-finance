@@ -15,7 +15,7 @@ function getOrigin(req: VercelRequest): string {
   const site = process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL;
   if (site) return site.replace(/\/$/, '');
 
-  // Fallbacks from headers (can be missing on some proxies)
+  // Fallbacks from headers
   const fromHeader =
     (req.headers['origin'] as string | undefined) ||
     (req.headers['referer'] as string | undefined) ||
@@ -38,10 +38,13 @@ function getStripe(): Stripe {
   if (!_stripe) {
     const key = requireEnv('STRIPE_SECRET_KEY'); // sk_...
     _stripe = new Stripe(key, {
-      // Use a real, stable version. (Your string "2025-08-27.basil" is invalid.)
+      // ✅ Use a valid, stable API version
       apiVersion: '2025-08-27.basil',
     });
-    console.log('[checkout] Stripe initialized (region=%s)', process.env.VERCEL_REGION || 'unknown');
+    console.log(
+      '[checkout] Stripe initialized (region=%s)',
+      process.env.VERCEL_REGION || 'unknown'
+    );
   }
   return _stripe;
 }
@@ -70,7 +73,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Missing userId/email' });
     }
 
-    const stripePriceId = requireEnv('STRIPE_PRICE_ID_099'); // e.g. price_abc123 (test or live must match your key)
+    const stripePriceId = requireEnv('STRIPE_PRICE_ID_099'); // price_xxx from Stripe
     const origin = getOrigin(req);
 
     const supabase = getSupabase();
@@ -103,7 +106,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       if (updateErr) {
         console.error('[checkout] Supabase update error:', updateErr);
-        // Not fatal for checkout session creation, but log it.
+        // Not fatal for checkout session creation
       }
     }
 
@@ -116,6 +119,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       cancel_url: `${origin}/app/preferences?upgrade=cancelled`,
       metadata: { supabase_user_id: userId },
       allow_promotion_codes: true,
+      locale: 'en', // ✅ Prevents dynamic './en' fetch error
     });
 
     if (!session.url) {
@@ -125,7 +129,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(200).json({ url: session.url });
   } catch (e: any) {
-    // Surface a readable message to the client, keep details in logs
     console.error('[checkout] Error:', e?.message || e);
     return res.status(500).json({ error: e?.message || 'Checkout failed' });
   }
