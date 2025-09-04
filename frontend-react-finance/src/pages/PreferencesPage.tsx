@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useSupabaseClient, useUser } from '@supabase/auth-helpers-react';
 
+type Banner = { type: 'success' | 'warning' | 'error'; text: string };
+
 const PreferencesPage: React.FC = () => {
   const supabase = useSupabaseClient();
   const user = useUser();
@@ -11,11 +13,14 @@ const PreferencesPage: React.FC = () => {
   const [emailMonthlyDigest, setEmailMonthlyDigest] = useState(false);
   const [isPaid, setIsPaid] = useState(false);
 
-  // UI helpers
   const [busy, setBusy] = useState<'checkout' | 'portal' | 'save' | null>(null);
-  const [banner, setBanner] = useState<{ type: 'success' | 'warning' | 'error'; text: string } | null>(null);
+  const [banner, setBanner] = useState<Banner | null>(null);
 
-  const urlSearchParams = useMemo(() => new URLSearchParams(window.location.search), []);
+  // Parse ?upgrade=... (only on client)
+  const urlSearchParams = useMemo(() => {
+    if (typeof window === 'undefined') return new URLSearchParams();
+    return new URLSearchParams(window.location.search);
+  }, []);
   const upgradeParam = urlSearchParams.get('upgrade');
 
   const fetchPaidStatus = async () => {
@@ -25,11 +30,17 @@ const PreferencesPage: React.FC = () => {
       .select('paid_user')
       .eq('id', user.id)
       .single();
-    if (!error) setIsPaid(!!data?.paid_user);
+
+    if (error) {
+      console.error('❌ Error fetching paid status:', error.message);
+      return;
+    }
+    setIsPaid(!!data?.paid_user);
   };
 
   useEffect(() => {
     if (!user) return;
+
     const loadPrefs = async () => {
       // Load preferences
       const { data, error } = await supabase
@@ -43,7 +54,7 @@ const PreferencesPage: React.FC = () => {
       }
 
       if (data) {
-        setGraphType(data.graph_type || 'line');
+        setGraphType((data.graph_type as 'line' | 'bar') || 'line');
         setShowSuggestions(data.show_suggestions ?? true);
         setEmailWeeklyDigest(data.email_weekly_digest ?? false);
         setEmailMonthlyDigest(data.email_monthly_digest ?? false);
@@ -51,6 +62,7 @@ const PreferencesPage: React.FC = () => {
 
       await fetchPaidStatus();
     };
+
     loadPrefs();
   }, [user, supabase]);
 
@@ -60,16 +72,18 @@ const PreferencesPage: React.FC = () => {
 
     if (upgradeParam === 'success') {
       setBanner({ type: 'success', text: 'Upgrade successful! Thanks for supporting PennyWize 💚' });
-      // Refetch paid flag (webhook should have updated users.paid_user)
+      // Webhook should update users.paid_user; fetch to reflect
       fetchPaidStatus();
     } else if (upgradeParam === 'cancelled') {
       setBanner({ type: 'warning', text: 'Checkout cancelled. You can upgrade any time.' });
     }
 
     // Clean the query param from the URL
-    const url = new URL(window.location.href);
-    url.searchParams.delete('upgrade');
-    window.history.replaceState({}, '', url.toString());
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('upgrade');
+      window.history.replaceState({}, '', url.toString());
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -77,6 +91,7 @@ const PreferencesPage: React.FC = () => {
     if (!user) return;
     try {
       setBusy('save');
+
       // Server-side guard: force monthly digest off for free users
       const monthly = isPaid ? emailMonthlyDigest : false;
 
@@ -94,14 +109,15 @@ const PreferencesPage: React.FC = () => {
         );
 
       if (error) {
-        console.error(error);
+        console.error('❌ Save preferences error:', error);
         setBanner({ type: 'error', text: 'Failed to save preferences.' });
-      } else {
-        if (!isPaid && emailMonthlyDigest) {
-          setEmailMonthlyDigest(false); // reflect the guard locally
-        }
-        setBanner({ type: 'success', text: 'Preferences saved!' });
+        return;
       }
+
+      if (!isPaid && emailMonthlyDigest) {
+        setEmailMonthlyDigest(false); // reflect the guard locally
+      }
+      setBanner({ type: 'success', text: 'Preferences saved!' });
     } finally {
       setBusy(null);
     }
@@ -114,13 +130,21 @@ const PreferencesPage: React.FC = () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId, email }),
     });
-    if (!r.ok) {
-      const err = await r.json().catch(() => ({}));
-      throw new Error(err.error || 'Checkout failed');
+
+    let data: any = {};
+    try {
+      data = await r.json();
+    } catch {
+      /* ignore */
     }
-    const { url } = await r.json();
-    if (!url) throw new Error('No checkout URL returned');
-    window.location.href = url;
+
+    if (!r.ok) {
+      const msg = data?.error || `Checkout failed (HTTP ${r.status})`;
+      throw new Error(msg);
+    }
+
+    if (!data?.url) throw new Error('No checkout URL returned');
+    window.location.href = data.url;
   };
 
   const openPortal = async (userId: string) => {
@@ -129,13 +153,21 @@ const PreferencesPage: React.FC = () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId }),
     });
-    if (!r.ok) {
-      const err = await r.json().catch(() => ({}));
-      throw new Error(err.error || 'Portal failed');
+
+    let data: any = {};
+    try {
+      data = await r.json();
+    } catch {
+      /* ignore */
     }
-    const { url } = await r.json();
-    if (!url) throw new Error('No portal URL returned');
-    window.location.href = url;
+
+    if (!r.ok) {
+      const msg = data?.error || `Portal failed (HTTP ${r.status})`;
+      throw new Error(msg);
+    }
+
+    if (!data?.url) throw new Error('No portal URL returned');
+    window.location.href = data.url;
   };
 
   const handleUpgrade = async () => {
@@ -144,7 +176,7 @@ const PreferencesPage: React.FC = () => {
       setBusy('checkout');
       await startCheckout(user.id, user.email);
     } catch (e: any) {
-      setBanner({ type: 'error', text: e.message || 'Failed to start checkout' });
+      setBanner({ type: 'error', text: e?.message || 'Failed to start checkout' });
     } finally {
       setBusy(null);
     }
@@ -156,7 +188,7 @@ const PreferencesPage: React.FC = () => {
       setBusy('portal');
       await openPortal(user.id);
     } catch (e: any) {
-      setBanner({ type: 'error', text: e.message || 'Failed to open billing portal' });
+      setBanner({ type: 'error', text: e?.message || 'Failed to open billing portal' });
     } finally {
       setBusy(null);
     }
