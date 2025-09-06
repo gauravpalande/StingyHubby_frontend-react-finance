@@ -165,8 +165,9 @@ const HomePage: React.FC = () => {
             <li>📤 Export financial history as CSV or PDF</li>
             <li>🧾 Edit/delete past financial entries</li>
             <li>💡 AI-powered Short-Term, Long-Term and Goals financial suggestion</li>
-            <li>🐞 Submit feature requests, bugs or Security concerns</li>
-            <li>📬 Digest emails (weekly/monthly)</li>
+            <li>📬 Digest emails (monthly)</li>
+            <li>👨‍💻 Priority support</li>
+            <li>📎 Financial history submissions attached to newsletters</li>
           </ul>
         </section>
       </div>
