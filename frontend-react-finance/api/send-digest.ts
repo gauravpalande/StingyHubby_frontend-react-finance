@@ -8,6 +8,92 @@ const supabase = createClient(
 );
 const resend = new Resend(process.env.RESEND_API_KEY!);
 
+// --- Minimal inline PDF generator (one page, Helvetica) ---
+function escapePdfText(s: string) {
+  return s.replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
+}
+function makeDigestPdf(params: {
+  title: string;
+  totalIncome: number;
+  totalExpenses: number;
+  savings: number;
+  dates: string[];
+}) {
+  const { title, totalIncome, totalExpenses, savings, dates } = params;
+
+  // Build text content lines
+  const lines = [
+    title,
+    '',
+    `Total Income: $${totalIncome.toFixed(2)}`,
+    `Total Expenses: $${totalExpenses.toFixed(2)}`,
+    `Estimated Savings: $${savings.toFixed(2)}`,
+    '',
+    'Recent Entries:',
+    ...dates.map((d) => `- ${d}`),
+  ].map(escapePdfText);
+
+  // PDF content stream using text operators
+  const content =
+    'BT\n' +
+    '/F1 18 Tf\n' +
+    '72 760 Td\n' +
+    `(${lines[0] || ''}) Tj\n` +
+    '/F1 12 Tf\n' +
+    lines
+      .slice(1)
+      .map(() => '0 -18 Td')
+      .join('\n') +
+    '\n' +
+    lines
+      .slice(1)
+      .map((t) => `(${t}) Tj`)
+      .join('\n') +
+    '\nET';
+
+  // Assemble a minimal PDF with proper xref
+  const objects: string[] = [];
+  objects[1] = '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n';
+  objects[2] = '2 0 obj\n<< /Type /Pages /Count 1 /Kids [3 0 R] >>\nendobj\n';
+  objects[3] =
+    '3 0 obj\n' +
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792]\n' +
+    '   /Resources << /Font << /F1 4 0 R >> >>\n' +
+    '   /Contents 5 0 R >>\n' +
+    'endobj\n';
+  objects[4] =
+    '4 0 obj\n' +
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\n' +
+    'endobj\n';
+  objects[5] =
+    `5 0 obj\n<< /Length ${Buffer.byteLength(content, 'utf8')} >>\nstream\n` +
+    content +
+    '\nendstream\nendobj\n';
+
+  // Build with byte offsets for xref
+  let pdf = '%PDF-1.4\n';
+  const offsets = [0]; // dummy for index 0
+  for (let i = 1; i <= 5; i++) {
+    offsets[i] = Buffer.byteLength(pdf, 'utf8');
+    pdf += objects[i];
+  }
+  const xrefStart = Buffer.byteLength(pdf, 'utf8');
+  pdf += 'xref\n';
+  pdf += `0 6\n`;
+  pdf += '0000000000 65535 f \n';
+  for (let i = 1; i <= 5; i++) {
+    const off = offsets[i].toString().padStart(10, '0');
+    pdf += `${off} 00000 n \n`;
+  }
+  pdf += 'trailer\n';
+  pdf += '<< /Size 6 /Root 1 0 R >>\n';
+  pdf += 'startxref\n';
+  pdf += `${xrefStart}\n`;
+  pdf += '%%EOF\n';
+
+  return Buffer.from(pdf, 'utf8');
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   console.log('📩 Digest handler started');
 
@@ -91,8 +177,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           type: 'bar',
           data: {
             labels: history
-              .slice() // clone
-              .reverse() // show oldest->newest left->right
+              .slice()
+              .reverse()
               .map((row) => new Date(row.created_at).toLocaleDateString()),
             datasets: [
               {
@@ -167,15 +253,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         </div>
       `;
 
-      // ✅ Attach CSV only for paid users (keep exports premium)
-      const attachments = user.paid_user
-        ? [
-            {
-              filename: 'history.csv',
-              content: convertToCSV(history),
-            },
-          ]
+      // Build PDF (paid users only), using recent dates for quick context
+      const recentDates = history
+        .slice()
+        .reverse()
+        .map((row) => new Date(row.created_at).toLocaleDateString());
+
+      const pdfBuffer = user.paid_user
+        ? makeDigestPdf({
+            title: 'Weekly Financial Digest',
+            totalIncome,
+            totalExpenses,
+            savings,
+            dates: recentDates,
+          })
         : undefined;
+
+      // ✅ Attach CSV + PDF for paid users
+      const attachments =
+        user.paid_user
+          ? [
+              { filename: 'history.csv', content: convertToCSV(history) },
+              ...(pdfBuffer
+                ? [{ filename: 'digest.pdf', content: pdfBuffer, contentType: 'application/pdf' as const }]
+                : []),
+            ]
+          : undefined;
 
       try {
         const response = await resend.emails.send({
@@ -186,12 +289,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           ...(attachments ? { attachments } : {}),
         });
 
-        // ⬇️ Minimal change: store only the message ID (clean string) in metadata
         await supabase.from('email_logs').insert({
           user_id: user.id,
           email: user.email,
           status: 'sent',
-          metadata: response ?? null, // was: JSON.stringify(response)
+          metadata: response ?? null, // keep your existing behavior
         });
 
         console.log(`✅ Sent email to ${user.email}`);
