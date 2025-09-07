@@ -42,10 +42,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // CSV helper
-    function convertToCSV(rows: any[]): string {
+    function convertToCSV(rows: Record<string, unknown>[]): string {
       if (!rows.length) return '';
       const headers = Object.keys(rows[0]);
-      const escape = (value: any) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+      const escape = (value: unknown) => `"${String(value ?? '').replace(/"/g, '""')}"`;
       const headerLine = headers.join(',');
       const lines = rows.map((row) => headers.map((h) => escape(row[h])).join(','));
       return [headerLine, ...lines].join('\n');
@@ -176,7 +176,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           user_id: user.id,
           email: user.email,
           status: 'sent',
-          metadata: JSON.stringify(response),
+          metadata: response ?? null, // was: JSON.stringify(response)
         });
 
         console.log(`✅ Sent email to ${user.email}`);
@@ -186,8 +186,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     return res.status(200).json({ message: 'Monthly Digest emails sent successfully' });
-  } catch (err: any) {
-    console.error("💥 Unhandled error:", err.message);
-    return res.status(500).json({ error: err.message });
+  } catch (err: unknown) {
+    const errorMessage =
+      err instanceof Error ? err.message : 'Unknown error occurred';
+    console.error("💥 Unhandled error:", errorMessage);
+    return res.status(500).json({ error: errorMessage });
   }
 }
