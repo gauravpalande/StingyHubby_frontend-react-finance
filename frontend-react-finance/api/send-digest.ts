@@ -191,7 +191,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           user_id: user.id,
           email: user.email,
           status: 'sent',
-          metadata: response?.data?.id ?? null, // was: JSON.stringify(response)
+          metadata: response ?? null, // was: JSON.stringify(response)
         });
 
         console.log(`✅ Sent email to ${user.email}`);
