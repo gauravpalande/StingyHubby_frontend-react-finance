@@ -3,6 +3,8 @@ import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import PDFDocument from 'pdfkit';
+import { render } from '@react-email/render';
+import WeeklyDigestEmail from '../emails/WeeklyDigest';
 
 // ---------- Singletons ----------
 const supabase = createClient(
@@ -12,12 +14,10 @@ const supabase = createClient(
 const resend = new Resend(process.env.RESEND_API_KEY!);
 
 // ---------- Helpers ----------
-
 function toUSD(n: number) {
   return `$${(n || 0).toFixed(2)}`;
 }
 
-// CSV builder (unchanged logic)
 function convertToCSV(rows: Record<string, unknown>[]): string {
   if (!rows.length) return '';
   const headers = Object.keys(rows[0]);
@@ -27,7 +27,6 @@ function convertToCSV(rows: Record<string, unknown>[]): string {
   return [headerLine, ...lines].join('\n');
 }
 
-// Build QuickChart URL (bigger for crisp PDF)
 type SubmissionHistory = {
   created_at: string;
   income?: number;
@@ -39,30 +38,20 @@ type SubmissionHistory = {
   long_term_suggestion?: string;
   goal_suggestion?: string;
   oneline_suggestion?: string;
-  // add other fields as needed
 };
 
 function buildChartUrl(history: SubmissionHistory[]) {
-  const labels = history
-    .slice()
-    .reverse()
+  const labels = history.slice().reverse()
     .map((row) => new Date(row.created_at).toLocaleDateString());
 
-  const incomeData = history
-    .slice()
-    .reverse()
-    .map((row) => row.income || 0);
-
-  const expenseData = history
-    .slice()
-    .reverse()
-    .map(
-      (row) =>
-        (row.mortgage || 0) +
-        (row.utilities || 0) +
-        (row.carPayments || 0) +
-        (row.creditCards || 0)
-    );
+  const incomeData = history.slice().reverse().map((row) => row.income || 0);
+  const expenseData = history.slice().reverse().map(
+    (row) =>
+      (row.mortgage || 0) +
+      (row.utilities || 0) +
+      (row.carPayments || 0) +
+      (row.creditCards || 0)
+  );
 
   const config = {
     type: 'bar',
@@ -70,15 +59,13 @@ function buildChartUrl(history: SubmissionHistory[]) {
       labels,
       datasets: [
         { label: 'Income', data: incomeData },
-        { label: 'Expenses', data: expenseData }
+        { label: 'Expenses', data: expenseData },
       ],
     },
     options: {
-      plugins: {
-        title: { display: true, text: 'Income vs. Expenses' }
-      },
-      scales: { y: { beginAtZero: true } }
-    }
+      plugins: { title: { display: true, text: 'Income vs. Expenses' } },
+      scales: { y: { beginAtZero: true } },
+    },
   };
 
   const u = new URL('https://quickchart.io/chart');
@@ -89,7 +76,6 @@ function buildChartUrl(history: SubmissionHistory[]) {
   return u.toString();
 }
 
-// Build AI suggestions text from your existing DB fields
 type User = {
   id: string;
   email: string;
@@ -112,7 +98,7 @@ function buildAiSuggestionText(user: User, history: SubmissionHistory[]): string
       'AI Suggestions:',
       `• Short term: ${ST}`,
       `• Long term: ${LT}`,
-      `• Goal: ${GO}`
+      `• Goal: ${GO}`,
     ].join('\n');
   } else {
     const one = latest?.oneline_suggestion?.trim() || 'Keep tracking your finances to get personalized insights.';
@@ -120,7 +106,6 @@ function buildAiSuggestionText(user: User, history: SubmissionHistory[]): string
   }
 }
 
-// Build PDF with chart + totals + AI tips
 async function buildDigestPdfBuffer(params: {
   title: string;
   displayName: string;
@@ -132,14 +117,8 @@ async function buildDigestPdfBuffer(params: {
   recentDates: string[];
 }): Promise<Buffer> {
   const {
-    title,
-    displayName,
-    totalIncome,
-    totalExpenses,
-    savings,
-    chartPng,
-    aiText,
-    recentDates,
+    title, displayName, totalIncome, totalExpenses, savings,
+    chartPng, aiText, recentDates,
   } = params;
 
   return new Promise((resolve, reject) => {
@@ -149,15 +128,12 @@ async function buildDigestPdfBuffer(params: {
     doc.on('error', reject);
     doc.on('end', () => resolve(Buffer.concat(chunks)));
 
-    // Header
     doc.fontSize(20).text(title, { align: 'left' });
     doc.moveDown(0.2);
     doc.fontSize(11).fillColor('#666').text(`Recipient: ${displayName}`);
-    doc.moveDown(0.8);
-    doc.fillColor('#000');
+    doc.moveDown(0.8).fillColor('#000');
 
-    // Totals
-    doc.fontSize(13).text('Summary', { underline: false });
+    doc.fontSize(13).text('Summary');
     doc.moveDown(0.35);
     doc.fontSize(11);
     doc.text(`• Total Income: ${toUSD(totalIncome)}`);
@@ -165,26 +141,23 @@ async function buildDigestPdfBuffer(params: {
     doc.text(`• Estimated Savings: ${toUSD(savings)}`);
     doc.moveDown(0.8);
 
-    // Chart
     if (chartPng && chartPng.length) {
       const pageWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
-      doc.fontSize(13).text('Chart', { underline: false });
+      doc.fontSize(13).text('Chart');
       doc.moveDown(0.3);
       doc.image(chartPng, { fit: [pageWidth, 320], align: 'center' });
       doc.moveDown(0.8);
     }
 
-    // Recent dates
     if (recentDates.length) {
-      doc.fontSize(13).text('Recent Entries', { underline: false });
+      doc.fontSize(13).text('Recent Entries');
       doc.moveDown(0.3);
       doc.fontSize(11);
       recentDates.forEach((d) => doc.text(`• ${d}`));
       doc.moveDown(0.8);
     }
 
-    // AI Suggestions
-    doc.fontSize(13).text('AI Suggestions', { underline: false });
+    doc.fontSize(13).text('AI Suggestions');
     doc.moveDown(0.3);
     doc.fontSize(11).text(aiText, { align: 'left' });
 
@@ -197,7 +170,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   console.log('📩 Digest handler started');
 
   try {
-    // 1) Get users who opted in to weekly digest
+    // 1) opted-in users
     const { data: prefs, error: prefError } = await supabase
       .from('preferences')
       .select('user_id')
@@ -207,7 +180,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       console.error('❌ Error fetching preferences:', prefError.message);
       return res.status(500).json({ error: prefError.message });
     }
-
     if (!prefs?.length) {
       console.log('ℹ️ No opted-in users found.');
       return res.status(200).json({ message: 'No opted-in users' });
@@ -215,7 +187,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const userIds = prefs.map((p) => p.user_id);
 
-    // 2) Fetch matching users including paid flag
+    // 2) users
     const { data: users, error: userError } = await supabase
       .from('users')
       .select('id, email, name, paid_user')
@@ -223,14 +195,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (userError || !users?.length) {
       console.error('❌ Error fetching users:', userError?.message);
-      return res
-        .status(500)
-        .json({ error: userError?.message || 'No users found' });
+      return res.status(500).json({ error: userError?.message || 'No users found' });
     }
 
-    // 3) Loop through users and send digests
+    const site = (process.env.NEXT_PUBLIC_SITE_URL || 'https://pennywize.vercel.app').replace(/\/$/, '');
+    const logoUrl = `${site}/pennywize-logo.svg`; // put SVG into /public
+
+    // 3) per user
     for (const user of users) {
-      // Pull 10 most recent entries
       const { data: history, error: historyError } = await supabase
         .from('submissions')
         .select('*')
@@ -247,7 +219,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         continue;
       }
 
-      // Metrics
+      // metrics
       const totalIncome = history.reduce((sum, row) => sum + (row.income || 0), 0);
       const totalExpenses = history.reduce(
         (sum, row) =>
@@ -260,7 +232,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       );
       const savings = totalIncome - totalExpenses;
 
-      // Chart (for email inline and for PDF)
+      // chart
       const chartUrl = buildChartUrl(history);
       let chartBuffer: Buffer | undefined;
       try {
@@ -269,37 +241,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         chartBuffer = Buffer.from(arr);
       } catch (e) {
         console.error(`⚠️ Chart fetch failed for ${user.email}:`, (e as Error)?.message || e);
-        chartBuffer = undefined; // PDF will just omit the chart section
+        chartBuffer = undefined;
       }
 
-      // Suggestions (from your DB fields)
+      // AI text
       const aiText = buildAiSuggestionText(user, history);
 
-      // Email HTML (keeps your existing structure but references the same chart)
+      // --------- React Email HTML ----------
       const displayName = user.name || user.email;
-      const htmlContent = `
-        <div style="font-family: system-ui, -apple-system, Segoe UI, Roboto; line-height:1.5;">
-          <p>Hi ${displayName},</p>
-          <p>Here’s your weekly financial digest:</p>
-          <ul>
-            <li><strong>📥 Total Income:</strong> ${toUSD(totalIncome)}</li>
-            <li><strong>💸 Total Expenses:</strong> ${toUSD(totalExpenses)}</li>
-            <li><strong>💰 Estimated Savings:</strong> ${toUSD(savings)}</li>
-          </ul>
-          <p><img src="${chartUrl}" alt="Financial Chart" style="max-width: 100%; height: auto;" /></p>
-          <pre style="white-space: pre-wrap; font-family: inherit">${aiText}</pre>
-          <p><small>To unsubscribe, update your preferences at https://pennywize.vercel.app/.</small></p>
-        </div>
-      `;
+      const html = render(
+        WeeklyDigestEmail({
+          logoUrl,
+          siteUrl: site,
+          displayName,
+          chartUrl,
+          aiText,
+          totalIncome: toUSD(totalIncome),
+          totalExpenses: toUSD(totalExpenses),
+          savings: toUSD(savings),
+        }),
+        { pretty: true }
+      );
 
-      // Recent dates for PDF section
-      const recentDates = history
-        .slice()
-        .reverse()
+      // --------- PDF attachment (paid users only; keep your policy) ----------
+      const recentDates = history.slice().reverse()
         .map((row) => new Date(row.created_at).toLocaleDateString());
 
-      // Build **PDF with chart + AI tips** (only for paid users, as in your original code)
-      // If you want PDFs for everyone, set `const shouldAttachPdf = true;`
       const shouldAttachPdf = !!user.paid_user;
       let pdfBuffer: Buffer | undefined;
 
@@ -316,32 +283,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
       }
 
-      // Attachments: CSV + PDF for paid users (unchanged policy)
-      const attachments: Array<{
-        filename: string;
-        content: string | Buffer;
-        contentType?: string;
-      }> = [];
-
+      const attachments: Array<{ filename: string; content: string | Buffer; contentType?: string; }> = [];
       if (user.paid_user) {
         const csv = convertToCSV(history);
         attachments.push({ filename: 'history.csv', content: csv });
-        if (pdfBuffer) {
-          // Resend accepts Buffer; base64 is also fine.
-          attachments.push({
-            filename: 'digest.pdf',
-            content: pdfBuffer,
-            contentType: 'application/pdf',
-          });
-        }
+        if (pdfBuffer) attachments.push({ filename: 'digest.pdf', content: pdfBuffer, contentType: 'application/pdf' });
       }
 
       try {
         const response = await resend.emails.send({
-          from: 'digest@stingyhubby.xyz',
+          from: 'PennyWize <digest@stingyhubby.xyz>',
           to: user.email,
           subject: 'Your Weekly Financial Digest',
-          html: htmlContent,
+          html,
           ...(attachments.length ? { attachments } : {}),
         });
 
@@ -360,11 +314,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(200).json({ message: 'Digest emails sent successfully' });
   } catch (err: unknown) {
-    const errorMessage =
-      typeof err === 'object' && err !== null && 'message' in err
-        ? (err as { message: string }).message
-        : String(err);
+    const errorMessage = err instanceof Error ? err.message : String(err);
     console.error('💥 Unhandled error:', errorMessage);
-    return res.status(500).json({ error: errorMessage });
+    return res.status(500).json({ error: errorMessage || 'Failed to send digest' });
   }
 }
