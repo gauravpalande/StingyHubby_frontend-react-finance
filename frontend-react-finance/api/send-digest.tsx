@@ -1,4 +1,9 @@
 // api/send-digest.js  (CommonJS + dynamic imports for ESM-only deps)
+export const config = {
+  runtime: 'nodejs20.x',
+  maxDuration: 60, // optional
+  memory: 1024     // optional
+};
 import PDFDocument from 'pdfkit';
 
 // ---------- Helpers (pure JS) ----------

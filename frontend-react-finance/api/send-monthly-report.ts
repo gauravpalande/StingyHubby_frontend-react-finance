@@ -3,6 +3,12 @@
 // - Keeps CSV + PDF attachments for paid users
 // - Uses previous calendar month as the period
 
+export const config = {
+  runtime: 'nodejs20.x',
+  maxDuration: 60,
+  memory: 1024
+};
+
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
