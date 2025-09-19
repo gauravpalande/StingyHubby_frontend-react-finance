@@ -4,7 +4,7 @@
 // - Uses previous calendar month as the period
 
 export const config = {
-  runtime: 'nodejs20.x',
+  runtime: "nodejs",   // ✅ valid values: "nodejs" | "edge" | "experimental-edge"
   maxDuration: 60,
   memory: 1024
 };

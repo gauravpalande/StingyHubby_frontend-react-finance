@@ -1,6 +1,6 @@
 // api/send-digest.js  (CommonJS + dynamic imports for ESM-only deps)
 export const config = {
-  runtime: 'nodejs20.x',
+  runtime: "nodejs",   // ✅ valid values: "nodejs" | "edge" | "experimental-edge"
   maxDuration: 60, // optional
   memory: 1024     // optional
 };
