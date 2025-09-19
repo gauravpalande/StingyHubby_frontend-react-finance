@@ -5,19 +5,13 @@
   "functions": {
     "api/send-digest.ts": {
       "runtime": "nodejs20.x",
-      "regions": ["sfo1"],
       "memory": 1024,
       "maxDuration": 60
     },
     "api/send-monthly-report.ts": {
       "runtime": "nodejs20.x",
-      "regions": ["sfo1"],
       "memory": 1024,
       "maxDuration": 60
-    },
-    "api/**/*.ts": {
-      "runtime": "nodejs20.x",
-      "regions": ["sfo1"]
     }
   },
   "crons": [
