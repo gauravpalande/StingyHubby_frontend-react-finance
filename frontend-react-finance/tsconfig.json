@@ -1,22 +1,16 @@
 {
-  "files": [],
-  "references": [
-    { "path": "./tsconfig.app.json" },
-    { "path": "./tsconfig.node.json" }
-  ],
   "compilerOptions": {
     "module": "ESNext",
     "target": "ES2020",
     "moduleResolution": "Node",
     "esModuleInterop": true,
-    "outDir": "dist",
-
     "jsx": "react-jsx",
     "lib": ["ES2020", "DOM"],
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
+    "outDir": "dist",
     "types": ["node"]
   },
-  "include": ["types", "src", "emails", "vite-env.d.ts"]
+  "include": ["src", "api", "emails", "types", "vite-env.d.ts"]
 }
