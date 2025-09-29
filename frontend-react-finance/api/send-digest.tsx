@@ -1,9 +1,4 @@
 // api/send-digest.js  (CommonJS + dynamic imports for ESM-only deps)
-export const config = {
-  runtime: "nodejs",   // ✅ valid values: "nodejs" | "edge" | "experimental-edge"
-  maxDuration: 60, // optional
-  memory: 1024     // optional
-};
 import PDFDocument from 'pdfkit';
 
 // ---------- Helpers (pure JS) ----------
@@ -252,9 +247,10 @@ function buildDigestPdfBuffer(params: BuildDigestPdfBufferParams) {
 }
 
 // ---------- API Handler (CJS export) ----------
-import type { NextApiRequest, NextApiResponse } from 'next';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-module.exports = async (req: NextApiRequest, res: NextApiResponse) => {
+export const config = { runtime: 'nodejs' }; // valid values: "nodejs" | "edge"
+module.exports = async (req: VercelRequest, res: VercelResponse) => {
   try {
     // ESM-only or ESM-first libs via dynamic import:
     const { createClient } = await import('@supabase/supabase-js');
