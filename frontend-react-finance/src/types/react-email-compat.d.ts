@@ -1,17 +1,16 @@
 // types/react-email-compat.d.ts
 declare module "@react-email/components" {
   import * as React from "react";
+  type C = React.ComponentType<unknown>;
 
-  type FC<P = unknown> = React.FC<P>;
-
-  export const Html: FC;
-  export const Head: FC;
-  export const Preview: FC;           // ✅ add Preview
-  export const Body: FC<React.HTMLAttributes<HTMLBodyElement>>;
-  export const Container: FC<React.HTMLAttributes<HTMLDivElement>>;
-  export const Section: FC<React.HTMLAttributes<HTMLDivElement>>;
-  export const Text: FC<React.HTMLAttributes<HTMLParagraphElement>>;
-  export const Img: FC<React.ImgHTMLAttributes<HTMLImageElement>>;
-  export const Hr: FC<React.HTMLAttributes<HTMLHRElement>>;
-  export const Link: FC<React.AnchorHTMLAttributes<HTMLAnchorElement>>;
+  export const Html: C;
+  export const Head: C;
+  export const Preview: C;
+  export const Body: C;
+  export const Container: C;
+  export const Section: C;
+  export const Text: C;
+  export const Img: C;
+  export const Hr: C;
+  export const Link: C;
 }
