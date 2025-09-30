@@ -1,23 +1,11 @@
-// emails/WeeklyDigest.tsx
+// api/emails/WeeklyDigest.tsx
 import * as React from "react";
-import {
-  Html,
-  Head,
-  Preview,
-  Body,
-  Container,
-  Section,
-  Text,
-  Img,
-  Hr,
-  Link,
-} from "@react-email/components";
 
 type WeeklyDigestProps = {
   displayName: string;
   logoUrl: string;        // absolute URL
   chartUrl: string;       // absolute URL
-  totalIncome: string;    // already formatted like "$5,431"
+  totalIncome: string;    // formatted like "$5,431"
   totalExpenses: string;  // formatted
   savings: string;        // formatted
   aiText: string;         // plain text; will render inside <pre>
@@ -47,11 +35,31 @@ export default function WeeklyDigest({
   siteUrl,
 }: WeeklyDigestProps) {
   return (
-    <Html>
-      <Head />
-      <Preview>Your weekly PennyWize digest is ready</Preview>
-      <Body style={{ margin: 0, padding: 0, backgroundColor: COLORS.bg }}>
-        <Container
+    <html lang="en">
+      <head>
+        <meta charSet="utf-8" />
+        <title>Your weekly PennyWize digest is ready</title>
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        {/* Preheader text (hidden in email body, shown in inbox preview) */}
+        <style>{`
+          .preheader { 
+            display: none !important; 
+            visibility: hidden; 
+            mso-hide: all; 
+            font-size: 1px; 
+            line-height: 1px; 
+            max-height: 0; 
+            max-width: 0; 
+            opacity: 0; 
+            overflow: hidden; 
+          }
+        `}</style>
+      </head>
+
+      <body style={{ margin: 0, padding: 0, backgroundColor: COLORS.bg }}>
+        <div className="preheader">Your weekly PennyWize digest is ready</div>
+
+        <div
           style={{
             width: "100%",
             maxWidth: 600,
@@ -62,17 +70,19 @@ export default function WeeklyDigest({
             border: `1px solid ${COLORS.cardBorder}`,
           }}
         >
-          <Section style={{ padding: "20px 24px", background: COLORS.yellow }}>
-            <Img
+          {/* Header */}
+          <div style={{ padding: "20px 24px", background: COLORS.yellow }}>
+            <img
               src={logoUrl}
               alt="PennyWize"
-              width="180"
-              style={{ display: "block" }}
+              width={180}
+              style={{ display: "block", border: 0, outline: "none" }}
             />
-          </Section>
+          </div>
 
-          <Section style={{ padding: "20px 24px 0" }}>
-            <Text
+          {/* Greeting */}
+          <div style={{ padding: "20px 24px 0" }}>
+            <p
               style={{
                 margin: 0,
                 fontFamily:
@@ -83,8 +93,8 @@ export default function WeeklyDigest({
               }}
             >
               Hi {displayName},
-            </Text>
-            <Text
+            </p>
+            <p
               style={{
                 margin: "6px 0 0",
                 fontFamily:
@@ -94,11 +104,16 @@ export default function WeeklyDigest({
               }}
             >
               Here’s your weekly financial digest:
-            </Text>
-          </Section>
+            </p>
+          </div>
 
-          <Section style={{ padding: "16px 24px 0" }}>
-            <table role="presentation" width="100%">
+          {/* KPI chips */}
+          <div style={{ padding: "16px 24px 0" }}>
+            <table
+              role="presentation"
+              width="100%"
+              style={{ borderCollapse: "separate", borderSpacing: 0 }}
+            >
               <tbody>
                 <tr>
                   <td
@@ -107,7 +122,7 @@ export default function WeeklyDigest({
                       padding: 12,
                       borderRadius: 10,
                       width: "33.33%",
-                      textAlign: "center",
+                      textAlign: "center" as const,
                       fontFamily:
                         "system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif",
                       fontSize: 13,
@@ -121,14 +136,16 @@ export default function WeeklyDigest({
                       {totalIncome}
                     </span>
                   </td>
+
                   <td style={{ width: 12 }} />
+
                   <td
                     style={{
                       background: COLORS.chipBg,
                       padding: 12,
                       borderRadius: 10,
                       width: "33.33%",
-                      textAlign: "center",
+                      textAlign: "center" as const,
                       fontFamily:
                         "system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif",
                       fontSize: 13,
@@ -142,14 +159,16 @@ export default function WeeklyDigest({
                       {totalExpenses}
                     </span>
                   </td>
+
                   <td style={{ width: 12 }} />
+
                   <td
                     style={{
                       background: COLORS.chipBg,
                       padding: 12,
                       borderRadius: 10,
                       width: "33.33%",
-                      textAlign: "center",
+                      textAlign: "center" as const,
                       fontFamily:
                         "system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif",
                       fontSize: 13,
@@ -166,12 +185,13 @@ export default function WeeklyDigest({
                 </tr>
               </tbody>
             </table>
-          </Section>
+          </div>
 
-          <Section style={{ padding: "16px 24px 0" }}>
-            <Img
+          {/* Chart */}
+          <div style={{ padding: "16px 24px 0" }}>
+            <img
               src={chartUrl}
-              width="552"
+              width={552}
               alt="Income vs. Expenses"
               style={{
                 width: "100%",
@@ -179,12 +199,14 @@ export default function WeeklyDigest({
                 borderRadius: 10,
                 border: "1px solid #eee",
                 display: "block",
+                outline: "none",
               }}
             />
-          </Section>
+          </div>
 
-          <Section style={{ padding: "16px 24px" }}>
-            <Text
+          {/* AI Suggestions */}
+          <div style={{ padding: "16px 24px" }}>
+            <p
               style={{
                 margin: 0,
                 fontFamily:
@@ -195,7 +217,7 @@ export default function WeeklyDigest({
               }}
             >
               🤖 AI Suggestions
-            </Text>
+            </p>
             <pre
               style={{
                 whiteSpace: "pre-wrap",
@@ -206,14 +228,16 @@ export default function WeeklyDigest({
                 margin: "8px 0 0",
               }}
             >
-              {aiText}
+{aiText}
             </pre>
-          </Section>
+          </div>
 
-          <Hr style={{ borderColor: "#eee", margin: 0 }} />
+          {/* Divider */}
+          <hr style={{ borderColor: "#eee", margin: 0, borderWidth: 1 }} />
 
-          <Section style={{ padding: "16px 24px 24px" }}>
-            <Text
+          {/* Footer */}
+          <div style={{ padding: "16px 24px 24px" }}>
+            <p
               style={{
                 margin: "0 0 6px 0",
                 fontFamily:
@@ -223,8 +247,8 @@ export default function WeeklyDigest({
               }}
             >
               Sent by PennyWize
-            </Text>
-            <Text
+            </p>
+            <p
               style={{
                 margin: 0,
                 fontFamily:
@@ -233,23 +257,23 @@ export default function WeeklyDigest({
                 color: "#6b7280",
               }}
             >
-              <Link
+              <a
                 href={`${siteUrl}/app/preferences`}
                 style={{ color: "#6b7280", textDecoration: "underline" }}
               >
                 Manage preferences
-              </Link>{" "}
+              </a>{" "}
               ·{" "}
-              <Link
+              <a
                 href={`${siteUrl}/unsubscribe`}
                 style={{ color: "#6b7280", textDecoration: "underline" }}
               >
                 Unsubscribe
-              </Link>
-            </Text>
-          </Section>
-        </Container>
-      </Body>
-    </Html>
+              </a>
+            </p>
+          </div>
+        </div>
+      </body>
+    </html>
   );
 }

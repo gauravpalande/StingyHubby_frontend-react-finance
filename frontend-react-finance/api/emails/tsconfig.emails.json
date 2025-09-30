@@ -1,9 +1,0 @@
-{
-  "extends": "./tsconfig.json",
-  "compilerOptions": {
-    "jsx": "react-jsx",
-    "types": ["node", "react", "react-dom"], 
-    "lib": ["es2021", "dom"]
-  },
-  "include": ["emails/**/*"]
-}

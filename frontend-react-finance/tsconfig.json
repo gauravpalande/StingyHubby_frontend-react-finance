@@ -10,7 +10,15 @@
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
     "outDir": "dist",
-    "types": ["node"]
+    "types": ["node", "vite/client"]   // ← optional but nice
   },
-  "include": ["src", "api", "emails", "types", "vite-env.d.ts"]
+  "include": [
+    "src",
+    "api",
+    "emails",
+    "types",
+    "vite-env.d.ts",
+    "vite.config.ts",                   // ← optional
+    "scripts/**/*.ts"                   // ← optional
+  ]
 }
