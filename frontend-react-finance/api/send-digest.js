@@ -1,13 +1,11 @@
 // frontend-react-finance/api/send-digest.js
-// CommonJS handler so Vercel can require() it safely.
-// Hit /api/send-digest?dryRun=1 to test without sending emails.
+// ESM handler (because api/package.json has "type":"module")
+// Test safely: /api/send-digest?dryRun=1
 
-'use strict';
+export const config = { runtime: 'nodejs' };
 
-module.exports.config = { runtime: 'nodejs' };
-
-const PDFDocument = require('pdfkit');
-const { PassThrough } = require('stream');
+import PDFDocument from 'pdfkit';
+import { PassThrough } from 'stream';
 
 /* --------------------------- Helpers --------------------------- */
 function toUSD(n) {
@@ -181,25 +179,25 @@ function buildDigestPdfBuffer({ title, displayName, totalIncome, totalExpenses, 
 }
 
 /* --------------------------- Handler --------------------------- */
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   try {
     console.log('[send-digest] invoked', { method: req.method, url: req.url });
 
-    // Parse query (works on Vercel)
+    // Parse query
     const url = new URL(req.url, `https://${req.headers.host || 'localhost'}`);
     const dryRun = url.searchParams.get('dryRun') === '1';
     if (dryRun) {
       return res.status(200).json({ ok: true, message: 'dry run – no emails sent' });
     }
 
-    // Validate env early for clearer logs
+    // Validate env
     const missing = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'RESEND_API_KEY'].filter((k) => !process.env[k]);
     if (missing.length) {
       console.error('[send-digest] missing env', missing);
       return res.status(500).json({ error: `Missing environment variables: ${missing.join(', ')}` });
     }
 
-    // ESM-only deps via dynamic import
+    // ESM deps (regular imports work in ESM files)
     const { createClient } = await import('@supabase/supabase-js');
     const { Resend } = await import('resend');
 
@@ -347,4 +345,4 @@ module.exports = async (req, res) => {
     const msg = (err && typeof err === 'object' && 'message' in err) ? err.message : String(err);
     return res.status(500).json({ error: msg || 'Failed to send digest' });
   }
-};
+}
