@@ -8,7 +8,9 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "build:emails": "esbuild emails/WeeklyDigest.tsx --bundle --platform=node --format=esm --target=node20 --jsx=automatic --outfile=api/.compiled/WeeklyDigest.mjs",
+    "prebuild": "npm run build:emails"
   },
   "dependencies": {
     "@hcaptcha/react-hcaptcha": "^1.12.0",
@@ -41,6 +43,7 @@
     "globals": "^16.0.0",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.30.1",
-    "vite": "^6.3.5"
+    "vite": "^6.3.5",
+    "esbuild": "^0.23.0"
   }
 }
