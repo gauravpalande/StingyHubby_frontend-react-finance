@@ -152,7 +152,7 @@ export default async function handler(req, res) {
     if (!users?.length) return res.status(200).json({ message: "No users matched ids" });
 
     const site = (process.env.NEXT_PUBLIC_SITE_URL || "https://pennywize.vercel.app").replace(/\/$/, "");
-    const logoUrl = (process.env.NEXT_PUBLIC_LOGO_URL || `${site}/Brand/pennywize-logo.png`).replace(/\/$/, "");
+    const logoUrl = (process.env.NEXT_PUBLIC_LOGO_URL || `${site}/Brand/pennywize-logo-v2.png`).replace(/\/$/, "");
 
     let sentCount = 0;
 
