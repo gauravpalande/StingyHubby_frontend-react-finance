@@ -9,7 +9,7 @@
     "build": "tsc --noEmit && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "build:emails": "esbuild emails/WeeklyDigest.tsx --bundle --platform=node --format=esm --target=node20 --jsx=automatic --outfile=api/.compiled/WeeklyDigest.mjs",
+    "build:emails": "esbuild api/emails/WeeklyDigest.tsx --bundle --platform=node --format=esm --target=node20 --jsx=automatic --outfile=api/.compiled/WeeklyDigest.mjs",
     "prebuild": "npm run build:emails"
   },
   "dependencies": {
