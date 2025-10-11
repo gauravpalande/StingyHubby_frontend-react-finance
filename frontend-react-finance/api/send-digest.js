@@ -100,147 +100,101 @@ function buildDigestPdfBuffer({
   totalExpenses,
   savings,
   chartPng, // Buffer | undefined
-  aiText, // string
-  recentDates, // string[]
+  aiText,
+  recentDates,
 }) {
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ size: "LETTER", margin: 36 }); // 0.5" margins
+    const doc = new PDFDocument({ size: "LETTER", margin: 36 });
     const stream = new PassThrough();
     const chunks = [];
 
-    stream.on("data", (c) =>
-      chunks.push(Buffer.isBuffer(c) ? c : Buffer.from(c))
-    );
+    stream.on("data", (c) => chunks.push(Buffer.isBuffer(c) ? c : Buffer.from(c)));
     stream.on("error", reject);
     stream.on("end", () => resolve(Buffer.concat(chunks)));
-
     doc.pipe(stream);
 
-    const cw = _contentWidth(doc);
+    const cw = doc.page.width - doc.page.margins.left - doc.page.margins.right;
 
-    // Title + recipient
-    doc
-      .font("Helvetica-Bold")
-      .fontSize(20)
-      .fillColor("#111")
-      .text(title, { width: cw, align: "left" });
+    /* ---------------- Header ---------------- */
+    doc.font("Helvetica-Bold").fontSize(20).fillColor("#111").text(title, {
+      width: cw,
+    });
     doc.moveDown(0.25);
-    doc
-      .font("Helvetica")
-      .fontSize(11)
-      .fillColor("#666")
-      .text(`Recipient: ${displayName}`, { width: cw });
-    doc.moveDown(0.8);
-    doc.fillColor("#111");
+    doc.font("Helvetica").fontSize(11).fillColor("#666").text(`Recipient: ${displayName}`);
+    doc.moveDown(1);
 
-    // Summary
-    doc.font("Helvetica-Bold").fontSize(13).text("Summary", { width: cw });
+    /* ---------------- Summary ---------------- */
+    doc.font("Helvetica-Bold").fontSize(13).fillColor("#111").text("Summary", { width: cw });
     doc.moveDown(0.25);
     doc.font("Helvetica").fontSize(11);
-    doc.text(`• Total Income: ${toUSD(totalIncome)}`, { width: cw });
-    doc.text(`• Total Expenses: ${toUSD(totalExpenses)}`, { width: cw });
-    doc.text(`• Estimated Savings: ${toUSD(savings)}`, { width: cw });
-    doc.moveDown(0.8);
+    doc.text(`• Total Income: ${toUSD(totalIncome)}`);
+    doc.text(`• Total Expenses: ${toUSD(totalExpenses)}`);
+    doc.text(`• Estimated Savings: ${toUSD(savings)}`);
+    doc.moveDown(1);
 
-    // Chart (flow)
+    /* ---------------- Chart ---------------- */
     if (chartPng && chartPng.length) {
-      const maxChartH = 280;
-      _ensureSpace(doc, maxChartH + 24);
-      doc
-        .font("Helvetica-Bold")
-        .fontSize(13)
-        .fillColor("#111")
-        .text("Chart", { width: cw });
+      const maxH = 260;
+      const bottomLimit = doc.page.height - doc.page.margins.bottom;
+      if (doc.y + maxH > bottomLimit) doc.addPage();
+
+      doc.font("Helvetica-Bold").fontSize(13).fillColor("#111").text("Chart", { width: cw });
       doc.moveDown(0.3);
-      doc.image(chartPng, {
-        fit: [cw, maxChartH],
+
+      // draw chart image
+      const chartY = doc.y;
+      doc.image(chartPng, doc.page.margins.left, chartY, {
+        fit: [cw, maxH],
         align: "center",
       });
-      doc.moveDown(0.8);
+
+      // manually advance cursor below the image
+      doc.y = chartY + maxH + 12;
     }
 
-    // Recent Entries
-    if (recentDates && recentDates.length) {
-      doc
-        .font("Helvetica-Bold")
-        .fontSize(13)
-        .fillColor("#111")
-        .text("Recent Entries", { width: cw });
-      doc.moveDown(0.3);
-
+    /* ---------------- Recent Entries ---------------- */
+    if (recentDates?.length) {
       const entriesText = recentDates.map((d) => `• ${d}`).join("\n");
-      const entriesHeight = doc.heightOfString(entriesText, {
+      const needed = doc.heightOfString(entriesText, { width: cw }) + 40;
+      const bottom = doc.page.height - doc.page.margins.bottom;
+      if (doc.y + needed > bottom) doc.addPage();
+
+      doc.font("Helvetica-Bold").fontSize(13).fillColor("#111").text("Recent Entries", { width: cw });
+      doc.moveDown(0.3);
+      doc.font("Helvetica").fontSize(11).fillColor("#111").text(entriesText, {
         width: cw,
         align: "left",
       });
-      _ensureSpace(doc, entriesHeight + 16);
-
-      doc
-        .font("Helvetica")
-        .fontSize(11)
-        .fillColor("#111")
-        .text(entriesText, {
-          width: cw,
-          align: "left",
-          continued: false,
-        });
-      doc.moveDown(0.8);
+      doc.moveDown(1);
     }
 
-    // AI Suggestions (boxed)
-    doc.font("Helvetica-Bold").fontSize(13).fillColor("#111");
+    /* ---------------- AI Suggestions ---------------- */
     const heading = "AI Suggestions";
-    const innerPad = 12;
-    const headingH = doc.heightOfString(heading, {
-      width: cw - innerPad * 2,
-    });
-    const aiHeight = doc.heightOfString(aiText || "", {
-      width: cw - innerPad * 2,
-    });
-    const boxH = innerPad + headingH + 6 + aiHeight + innerPad;
-
-    _ensureSpace(doc, boxH + 12);
+    const pad = 12;
+    const headingH = doc.heightOfString(heading, { width: cw - pad * 2 });
+    const aiH = doc.heightOfString(aiText || "", { width: cw - pad * 2 });
+    const boxH = headingH + aiH + pad * 2 + 8;
+    const bottom = doc.page.height - doc.page.margins.bottom;
+    if (doc.y + boxH > bottom) doc.addPage();
 
     const boxX = doc.page.margins.left;
     const boxY = doc.y;
+    doc.save().roundedRect(boxX, boxY, cw, boxH, 10).fill("#fff8e1").restore();
 
-    doc
-      .save()
-      .roundedRect(boxX, boxY, cw, boxH, 10)
-      .fill("#fff8e1")
-      .restore();
-
-    doc
-      .fillColor("#111")
-      .font("Helvetica-Bold")
-      .fontSize(13)
-      .text(heading, boxX + innerPad, boxY + innerPad, {
-        width: cw - innerPad * 2,
-      });
-
+    doc.font("Helvetica-Bold").fontSize(13).fillColor("#111").text(heading, boxX + pad, boxY + pad);
     doc
       .font("Helvetica")
       .fontSize(11)
       .fillColor("#111")
-      .text(aiText || "", boxX + innerPad, boxY + innerPad + headingH + 6, {
-        width: cw - innerPad * 2,
-        align: "left",
-        continued: false,
-      });
+      .text(aiText || "", boxX + pad, boxY + pad + headingH + 6, { width: cw - pad * 2 });
 
-    doc.y = boxY + boxH;
-    doc.moveDown(0.8);
+    doc.y = boxY + boxH + 12;
 
-    // Footer
-    _ensureSpace(doc, 30);
-    doc
-      .font("Helvetica")
-      .fontSize(9)
-      .fillColor("#666")
-      .text("Sent by PennyWize • https://pennywize.vercel.app", {
-        width: cw,
-        align: "center",
-      });
+    /* ---------------- Footer ---------------- */
+    doc.font("Helvetica").fontSize(9).fillColor("#666").text(
+      "Sent by PennyWize • https://pennywize.vercel.app",
+      { width: cw, align: "center" }
+    );
 
     doc.end();
   });
