@@ -3,13 +3,16 @@ import * as React from "react";
 
 type WeeklyDigestProps = {
   displayName: string;
-  logoUrl: string;        // absolute URL
+  logoUrl: string;        // absolute URL or cid:...
   chartUrl: string;       // absolute URL
   totalIncome: string;    // formatted like "$5,431"
   totalExpenses: string;  // formatted
   savings: string;        // formatted
   aiText: string;         // plain text; will render inside <pre>
   siteUrl: string;        // e.g. "https://pennywize.vercel.app"
+  /** NEW: fully qualified, per-user links (magic links) */
+  manageUrl?: string;
+  unsubscribeUrl?: string;
 };
 
 const COLORS = {
@@ -33,6 +36,8 @@ export default function WeeklyDigest({
   savings,
   aiText,
   siteUrl,
+  manageUrl,
+  unsubscribeUrl,
 }: WeeklyDigestProps) {
   return (
     <html lang="en">
@@ -258,14 +263,14 @@ export default function WeeklyDigest({
               }}
             >
               <a
-                href={`${siteUrl}/app/preferences`}
+                href={manageUrl ?? `${siteUrl}/app/preferences`}
                 style={{ color: "#6b7280", textDecoration: "underline" }}
               >
                 Manage preferences
               </a>{" "}
               ·{" "}
               <a
-                href={`${siteUrl}/unsubscribe`}
+                href={unsubscribeUrl ?? `${siteUrl}/unsubscribe`}
                 style={{ color: "#6b7280", textDecoration: "underline" }}
               >
                 Unsubscribe

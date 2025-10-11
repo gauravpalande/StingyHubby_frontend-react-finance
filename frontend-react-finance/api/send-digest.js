@@ -296,6 +296,31 @@ export default async function handler(req, res) {
       const aiText = buildAiSuggestionText(user, history);
       const displayName = user.name || user.email;
 
+      // ---------- NEW: per-user authenticated deep links ----------
+      let manageUrl = `${site}/app/preferences`;
+      let unsubscribeUrl = `${site}/unsubscribe`;
+
+      try {
+        // Sign-in first, then redirect to preferences
+        const { data: manageLinkData } = await supabase.auth.admin.generateLink({
+          type: "magiclink",
+          email: user.email,
+          options: { redirectTo: `${site}/app/preferences?from=digest` },
+        });
+        if (manageLinkData?.action_link) manageUrl = manageLinkData.action_link;
+      } catch {/* swallow and keep fallback */}
+
+      try {
+        // Sign-in first, then redirect to unsubscribe page (you can handle the toggle server-side there)
+        const { data: unsubLinkData } = await supabase.auth.admin.generateLink({
+          type: "magiclink",
+          email: user.email,
+          options: { redirectTo: `${site}/app/unsubscribe?from=digest` },
+        });
+        if (unsubLinkData?.action_link) unsubscribeUrl = unsubLinkData.action_link;
+      } catch {/* swallow and keep fallback */}
+      // ------------------------------------------------------------
+
       // Render the email HTML from the compiled React component
       const html = await renderWeeklyDigestHtml({
         displayName,
@@ -306,6 +331,8 @@ export default async function handler(req, res) {
         totalExpenses: toUSD(totalExpenses),
         savings: toUSD(savings),
         siteUrl: site,
+        manageUrl,
+        unsubscribeUrl,
       });
 
       // Attachments
