@@ -10,9 +10,8 @@ type WeeklyDigestProps = {
   savings: string;        // formatted
   aiText: string;         // plain text; will render inside <pre>
   siteUrl: string;        // e.g. "https://pennywize.vercel.app"
-  /** NEW: fully qualified, per-user links (magic links) */
-  manageUrl?: string;
-  unsubscribeUrl?: string;
+  manageUrl?: string;     // NEW: fully-qualified link
+  unsubscribeUrl?: string;// NEW: fully-qualified link
 };
 
 const COLORS = {
@@ -45,7 +44,6 @@ export default function WeeklyDigest({
         <meta charSet="utf-8" />
         <title>Your weekly PennyWize digest is ready</title>
         <meta name="viewport" content="width=device-width,initial-scale=1" />
-        {/* Preheader text (hidden in email body, shown in inbox preview) */}
         <style>{`
           .preheader { 
             display: none !important; 
@@ -114,78 +112,22 @@ export default function WeeklyDigest({
 
           {/* KPI chips */}
           <div style={{ padding: "16px 24px 0" }}>
-            <table
-              role="presentation"
-              width="100%"
-              style={{ borderCollapse: "separate", borderSpacing: 0 }}
-            >
+            <table role="presentation" width="100%" style={{ borderCollapse: "separate", borderSpacing: 0 }}>
               <tbody>
                 <tr>
-                  <td
-                    style={{
-                      background: COLORS.chipBg,
-                      padding: 12,
-                      borderRadius: 10,
-                      width: "33.33%",
-                      textAlign: "center" as const,
-                      fontFamily:
-                        "system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif",
-                      fontSize: 13,
-                      color: COLORS.black,
-                      fontWeight: 600,
-                    }}
-                  >
-                    📥 Income
-                    <br />
-                    <span style={{ color: COLORS.green, fontWeight: 800 }}>
-                      {totalIncome}
-                    </span>
+                  <td style={{ background: COLORS.chipBg, padding: 12, borderRadius: 10, width: "33.33%", textAlign: "center" as const, fontFamily: "system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif", fontSize: 13, color: COLORS.black, fontWeight: 600 }}>
+                    📥 Income<br />
+                    <span style={{ color: COLORS.green, fontWeight: 800 }}>{totalIncome}</span>
                   </td>
-
                   <td style={{ width: 12 }} />
-
-                  <td
-                    style={{
-                      background: COLORS.chipBg,
-                      padding: 12,
-                      borderRadius: 10,
-                      width: "33.33%",
-                      textAlign: "center" as const,
-                      fontFamily:
-                        "system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif",
-                      fontSize: 13,
-                      color: COLORS.black,
-                      fontWeight: 600,
-                    }}
-                  >
-                    💸 Expenses
-                    <br />
-                    <span style={{ color: COLORS.pink, fontWeight: 800 }}>
-                      {totalExpenses}
-                    </span>
+                  <td style={{ background: COLORS.chipBg, padding: 12, borderRadius: 10, width: "33.33%", textAlign: "center" as const, fontFamily: "system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif", fontSize: 13, color: COLORS.black, fontWeight: 600 }}>
+                    💸 Expenses<br />
+                    <span style={{ color: COLORS.pink, fontWeight: 800 }}>{totalExpenses}</span>
                   </td>
-
                   <td style={{ width: 12 }} />
-
-                  <td
-                    style={{
-                      background: COLORS.chipBg,
-                      padding: 12,
-                      borderRadius: 10,
-                      width: "33.33%",
-                      textAlign: "center" as const,
-                      fontFamily:
-                        "system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif",
-                      fontSize: 13,
-                      color: COLORS.black,
-                      fontWeight: 600,
-                    }}
-                  >
-                    💰 Savings
-                    <br />
-                    <span style={{ color: COLORS.black, fontWeight: 800 }}>
-                      {savings}
-                    </span>
+                  <td style={{ background: COLORS.chipBg, padding: 12, borderRadius: 10, width: "33.33%", textAlign: "center" as const, fontFamily: "system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif", fontSize: 13, color: COLORS.black, fontWeight: 600 }}>
+                    💰 Savings<br />
+                    <span style={{ color: COLORS.black, fontWeight: 800 }}>{savings}</span>
                   </td>
                 </tr>
               </tbody>
@@ -211,28 +153,10 @@ export default function WeeklyDigest({
 
           {/* AI Suggestions */}
           <div style={{ padding: "16px 24px" }}>
-            <p
-              style={{
-                margin: 0,
-                fontFamily:
-                  "system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif",
-                fontSize: 16,
-                fontWeight: 800,
-                color: COLORS.black,
-              }}
-            >
+            <p style={{ margin: 0, fontFamily: "system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif", fontSize: 16, fontWeight: 800, color: COLORS.black }}>
               🤖 AI Suggestions
             </p>
-            <pre
-              style={{
-                whiteSpace: "pre-wrap",
-                fontFamily:
-                  "system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif",
-                fontSize: 14,
-                color: COLORS.black,
-                margin: "8px 0 0",
-              }}
-            >
+            <pre style={{ whiteSpace: "pre-wrap", fontFamily: "system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif", fontSize: 14, color: COLORS.black, margin: "8px 0 0" }}>
 {aiText}
             </pre>
           </div>
@@ -242,37 +166,15 @@ export default function WeeklyDigest({
 
           {/* Footer */}
           <div style={{ padding: "16px 24px 24px" }}>
-            <p
-              style={{
-                margin: "0 0 6px 0",
-                fontFamily:
-                  "system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif",
-                fontSize: 12,
-                color: "#6b7280",
-              }}
-            >
+            <p style={{ margin: "0 0 6px 0", fontFamily: "system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif", fontSize: 12, color: "#6b7280" }}>
               Sent by PennyWize
             </p>
-            <p
-              style={{
-                margin: 0,
-                fontFamily:
-                  "system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif",
-                fontSize: 12,
-                color: "#6b7280",
-              }}
-            >
-              <a
-                href={manageUrl ?? `${siteUrl}/app/preferences`}
-                style={{ color: "#6b7280", textDecoration: "underline" }}
-              >
+            <p style={{ margin: 0, fontFamily: "system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif", fontSize: 12, color: "#6b7280" }}>
+              <a href={manageUrl ?? `${siteUrl}/app/preferences`} style={{ color: "#6b7280", textDecoration: "underline" }}>
                 Manage preferences
               </a>{" "}
               ·{" "}
-              <a
-                href={unsubscribeUrl ?? `${siteUrl}/unsubscribe`}
-                style={{ color: "#6b7280", textDecoration: "underline" }}
-              >
+              <a href={unsubscribeUrl ?? `${siteUrl}/unsubscribe`} style={{ color: "#6b7280", textDecoration: "underline" }}>
                 Unsubscribe
               </a>
             </p>

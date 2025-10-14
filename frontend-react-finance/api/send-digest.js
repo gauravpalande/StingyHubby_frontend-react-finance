@@ -1,16 +1,11 @@
 // frontend-react-finance/api/send-digest.js
-// ESM handler (api/package.json has { "type": "module" })
-// Renders the WeeklyDigest React component -> HTML (pre-bundled with esbuild).
-
 export const config = { runtime: "nodejs" };
 
 import PDFDocument from "pdfkit";
 import { PassThrough } from "stream";
 
 /* --------------------------- Helpers --------------------------- */
-function toUSD(n) {
-  return `$${(n || 0).toFixed(2)}`;
-}
+function toUSD(n) { return `$${(n || 0).toFixed(2)}`; }
 
 function convertToCSV(rows) {
   if (!rows || !rows.length) return "";
@@ -26,28 +21,13 @@ function buildChartUrl(history) {
   const labels = fwd.map((r) => new Date(r.created_at).toLocaleDateString());
   const incomeData = fwd.map((r) => r.income || 0);
   const expenseData = fwd.map(
-    (r) =>
-      (r.mortgage || 0) +
-      (r.utilities || 0) +
-      (r.carPayments || 0) +
-      (r.creditCards || 0)
+    (r) => (r.mortgage || 0) + (r.utilities || 0) + (r.carPayments || 0) + (r.creditCards || 0)
   );
-
   const config = {
     type: "bar",
-    data: {
-      labels,
-      datasets: [
-        { label: "Income", data: incomeData },
-        { label: "Expenses", data: expenseData },
-      ],
-    },
-    options: {
-      plugins: { title: { display: true, text: "Income vs. Expenses" } },
-      scales: { y: { beginAtZero: true } },
-    },
+    data: { labels, datasets: [{ label: "Income", data: incomeData }, { label: "Expenses", data: expenseData }] },
+    options: { plugins: { title: { display: true, text: "Income vs. Expenses" } }, scales: { y: { beginAtZero: true } } }
   };
-
   const u = new URL("https://quickchart.io/chart");
   u.searchParams.set("c", JSON.stringify(config));
   u.searchParams.set("format", "png");
@@ -59,55 +39,27 @@ function buildChartUrl(history) {
 function buildAiSuggestionText(user, history) {
   const latest = history[0];
   if (user.paid_user) {
-    const st =
-      (latest?.short_term_suggestion || "").trim() ||
-      "Consider reducing discretionary expenses next month to increase savings.";
-    const lt =
-      (latest?.long_term_suggestion || "").trim() ||
-      "Consider contributing more towards your retirement savings.";
-    const goal =
-      (latest?.goal_suggestion || "").trim() ||
-      "Consider contributing more towards your financial goals.";
-    return [
-      "AI Suggestions:",
-      `• Short term: ${st}`,
-      `• Long term: ${lt}`,
-      `• Goal: ${goal}`,
-    ].join("\n");
+    const st = (latest?.short_term_suggestion || "").trim() || "Consider reducing discretionary expenses next month to increase savings.";
+    const lt = (latest?.long_term_suggestion || "").trim() || "Consider contributing more towards your retirement savings.";
+    const goal = (latest?.goal_suggestion || "").trim() || "Consider contributing more towards your financial goals.";
+    return ["AI Suggestions:", `• Short term: ${st}`, `• Long term: ${lt}`, `• Goal: ${goal}`].join("\n");
   } else {
-    const one =
-      (latest?.oneline_suggestion || "").trim() ||
-      "Keep tracking your finances to get personalized insights.";
+    const one = (latest?.oneline_suggestion || "").trim() || "Keep tracking your finances to get personalized insights.";
     return ["AI Suggestion:", `• ${one}`].join("\n");
   }
 }
 
 /* -------------------- PDF rendering (overlap-safe) -------------------- */
-function _contentWidth(doc) {
-  return (
-    doc.page.width - doc.page.margins.left - doc.page.margins.right
-  );
-}
 function _ensureSpace(doc, needed) {
   const bottom = doc.page.height - doc.page.margins.bottom;
   if (doc.y + needed > bottom) doc.addPage();
 }
 
-function buildDigestPdfBuffer({
-  title,
-  displayName,
-  totalIncome,
-  totalExpenses,
-  savings,
-  chartPng, // Buffer | undefined
-  aiText,
-  recentDates,
-}) {
+function buildDigestPdfBuffer({ title, displayName, totalIncome, totalExpenses, savings, chartPng, aiText, recentDates }) {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: "LETTER", margin: 36 });
     const stream = new PassThrough();
     const chunks = [];
-
     stream.on("data", (c) => chunks.push(Buffer.isBuffer(c) ? c : Buffer.from(c)));
     stream.on("error", reject);
     stream.on("end", () => resolve(Buffer.concat(chunks)));
@@ -115,15 +67,13 @@ function buildDigestPdfBuffer({
 
     const cw = doc.page.width - doc.page.margins.left - doc.page.margins.right;
 
-    /* ---------------- Header ---------------- */
-    doc.font("Helvetica-Bold").fontSize(20).fillColor("#111").text(title, {
-      width: cw,
-    });
+    // Header
+    doc.font("Helvetica-Bold").fontSize(20).fillColor("#111").text(title, { width: cw });
     doc.moveDown(0.25);
     doc.font("Helvetica").fontSize(11).fillColor("#666").text(`Recipient: ${displayName}`);
     doc.moveDown(1);
 
-    /* ---------------- Summary ---------------- */
+    // Summary
     doc.font("Helvetica-Bold").fontSize(13).fillColor("#111").text("Summary", { width: cw });
     doc.moveDown(0.25);
     doc.font("Helvetica").fontSize(11);
@@ -132,7 +82,7 @@ function buildDigestPdfBuffer({
     doc.text(`• Estimated Savings: ${toUSD(savings)}`);
     doc.moveDown(1);
 
-    /* ---------------- Chart ---------------- */
+    // Chart
     if (chartPng && chartPng.length) {
       const maxH = 260;
       const bottomLimit = doc.page.height - doc.page.margins.bottom;
@@ -141,18 +91,12 @@ function buildDigestPdfBuffer({
       doc.font("Helvetica-Bold").fontSize(13).fillColor("#111").text("Chart", { width: cw });
       doc.moveDown(0.3);
 
-      // draw chart image
       const chartY = doc.y;
-      doc.image(chartPng, doc.page.margins.left, chartY, {
-        fit: [cw, maxH],
-        align: "center",
-      });
-
-      // manually advance cursor below the image
-      doc.y = chartY + maxH + 12;
+      doc.image(chartPng, doc.page.margins.left, chartY, { fit: [cw, maxH], align: "center" });
+      doc.y = chartY + maxH + 12; // move cursor below image
     }
 
-    /* ---------------- Recent Entries ---------------- */
+    // Recent Entries
     if (recentDates?.length) {
       const entriesText = recentDates.map((d) => `• ${d}`).join("\n");
       const needed = doc.heightOfString(entriesText, { width: cw }) + 40;
@@ -161,14 +105,11 @@ function buildDigestPdfBuffer({
 
       doc.font("Helvetica-Bold").fontSize(13).fillColor("#111").text("Recent Entries", { width: cw });
       doc.moveDown(0.3);
-      doc.font("Helvetica").fontSize(11).fillColor("#111").text(entriesText, {
-        width: cw,
-        align: "left",
-      });
+      doc.font("Helvetica").fontSize(11).fillColor("#111").text(entriesText, { width: cw, align: "left" });
       doc.moveDown(1);
     }
 
-    /* ---------------- AI Suggestions ---------------- */
+    // AI Suggestions (boxed)
     const heading = "AI Suggestions";
     const pad = 12;
     const headingH = doc.heightOfString(heading, { width: cw - pad * 2 });
@@ -182,19 +123,11 @@ function buildDigestPdfBuffer({
     doc.save().roundedRect(boxX, boxY, cw, boxH, 10).fill("#fff8e1").restore();
 
     doc.font("Helvetica-Bold").fontSize(13).fillColor("#111").text(heading, boxX + pad, boxY + pad);
-    doc
-      .font("Helvetica")
-      .fontSize(11)
-      .fillColor("#111")
-      .text(aiText || "", boxX + pad, boxY + pad + headingH + 6, { width: cw - pad * 2 });
-
+    doc.font("Helvetica").fontSize(11).fillColor("#111").text(aiText || "", boxX + pad, boxY + pad + headingH + 6, { width: cw - pad * 2 });
     doc.y = boxY + boxH + 12;
 
-    /* ---------------- Footer ---------------- */
-    doc.font("Helvetica").fontSize(9).fillColor("#666").text(
-      "Sent by PennyWize • https://pennywize.vercel.app",
-      { width: cw, align: "center" }
-    );
+    // Footer
+    doc.font("Helvetica").fontSize(9).fillColor("#666").text("Sent by PennyWize • https://pennywize.vercel.app", { width: cw, align: "center" });
 
     doc.end();
   });
@@ -204,9 +137,7 @@ function buildDigestPdfBuffer({
 async function renderWeeklyDigestHtml(props) {
   const { renderToStaticMarkup } = await import("react-dom/server");
   const React = await import("react");
-  // Path is relative to THIS file (api/send-digest.js)
   const { default: WeeklyDigest } = await import("./.compiled/WeeklyDigest.mjs");
-
   const element = React.createElement(WeeklyDigest, props);
   return "<!doctype html>" + renderToStaticMarkup(element);
 }
@@ -244,26 +175,17 @@ export default async function handler(req, res) {
     if (!users?.length) return res.status(200).json({ message: "No users matched ids" });
 
     const site = (process.env.NEXT_PUBLIC_SITE_URL || "https://pennywize.vercel.app").replace(/\/$/, "");
-    // Default public URL (fallback if CID fails). Add cache-buster to avoid stale proxies.
     const fallbackLogoUrl = (process.env.NEXT_PUBLIC_LOGO_URL || `${site}/Brand/pennywize-logo-v2.png`) + `?v=${Date.now()}`;
 
-    // Try to embed the logo via CID from /public (safer vs. caching). If read fails, we'll use URL.
+    // Try CID logo
     let logoAttachment = null;
     let cidLogoSrc = null;
     try {
       const { readFileSync } = await import("node:fs");
-      // Ensure this file exists in your repo so Vercel includes it in the build output.
       const logoBytes = readFileSync("public/pennywize-logo.png");
-      logoAttachment = {
-        filename: "pennywize-logo.png",
-        content: logoBytes,
-        cid: "pw-logo",
-        contentType: "image/png",
-      };
+      logoAttachment = { filename: "pennywize-logo.png", content: logoBytes, cid: "pw-logo", contentType: "image/png" };
       cidLogoSrc = "cid:pw-logo";
-    } catch {
-      cidLogoSrc = null; // fallback to URL below
-    }
+    } catch { cidLogoSrc = null; }
 
     let sentCount = 0;
 
@@ -278,10 +200,7 @@ export default async function handler(req, res) {
       if (historyError || !history?.length) continue;
 
       const totalIncome = history.reduce((sum, r) => sum + (r.income || 0), 0);
-      const totalExpenses = history.reduce(
-        (sum, r) => sum + (r.mortgage || 0) + (r.utilities || 0) + (r.carPayments || 0) + (r.creditCards || 0),
-        0
-      );
+      const totalExpenses = history.reduce((sum, r) => sum + (r.mortgage || 0) + (r.utilities || 0) + (r.carPayments || 0) + (r.creditCards || 0), 0);
       const savings = totalIncome - totalExpenses;
 
       const chartUrl = buildChartUrl(history);
@@ -289,39 +208,31 @@ export default async function handler(req, res) {
       try {
         const img = await fetch(chartUrl);
         chartBuffer = Buffer.from(await img.arrayBuffer());
-      } catch {
-        chartBuffer = undefined;
-      }
+      } catch { chartBuffer = undefined; }
 
       const aiText = buildAiSuggestionText(user, history);
       const displayName = user.name || user.email;
 
-      // ---------- NEW: per-user authenticated deep links ----------
+      // ✅ Generate magic links that land on /auth/callback, which exchanges the code then routes to target.
       let manageUrl = `${site}/app/preferences`;
       let unsubscribeUrl = `${site}/unsubscribe`;
-
       try {
-        // Sign-in first, then redirect to preferences
         const { data: manageLinkData } = await supabase.auth.admin.generateLink({
           type: "magiclink",
           email: user.email,
-          options: { redirectTo: `${site}/app/preferences?from=digest` },
+          options: { redirectTo: `${site}/auth/callback?next=${encodeURIComponent("/app/preferences")}` },
         });
         if (manageLinkData?.action_link) manageUrl = manageLinkData.action_link;
-      } catch {/* swallow and keep fallback */}
-
+      } catch {}
       try {
-        // Sign-in first, then redirect to unsubscribe page (you can handle the toggle server-side there)
         const { data: unsubLinkData } = await supabase.auth.admin.generateLink({
           type: "magiclink",
           email: user.email,
-          options: { redirectTo: `${site}/app/unsubscribe?from=digest` },
+          options: { redirectTo: `${site}/auth/callback?next=${encodeURIComponent("/app/unsubscribe")}` },
         });
         if (unsubLinkData?.action_link) unsubscribeUrl = unsubLinkData.action_link;
-      } catch {/* swallow and keep fallback */}
-      // ------------------------------------------------------------
+      } catch {}
 
-      // Render the email HTML from the compiled React component
       const html = await renderWeeklyDigestHtml({
         displayName,
         logoUrl: cidLogoSrc || fallbackLogoUrl,
@@ -335,22 +246,11 @@ export default async function handler(req, res) {
         unsubscribeUrl,
       });
 
-      // Attachments
       const attachments = [];
-
-      // Add CSV/PDF for paid users
       if (user.paid_user) {
-        attachments.push({
-          filename: "history.csv",
-          content: convertToCSV(history),
-          contentType: "text/csv",
-        });
+        attachments.push({ filename: "history.csv", content: convertToCSV(history), contentType: "text/csv" });
 
-        const recentDates = history
-          .slice()
-          .reverse()
-          .map((row) => new Date(row.created_at).toLocaleDateString());
-
+        const recentDates = history.slice().reverse().map((row) => new Date(row.created_at).toLocaleDateString());
         try {
           const pdfBuffer = await buildDigestPdfBuffer({
             title: "Weekly Financial Digest",
@@ -362,19 +262,9 @@ export default async function handler(req, res) {
             aiText,
             recentDates,
           });
-          if (pdfBuffer) {
-            attachments.push({
-              filename: "digest.pdf",
-              content: pdfBuffer,
-              contentType: "application/pdf",
-            });
-          }
-        } catch {
-          // swallow PDF errors to not block the email
-        }
+          if (pdfBuffer) attachments.push({ filename: "digest.pdf", content: pdfBuffer, contentType: "application/pdf" });
+        } catch {}
       }
-
-      // Add CID logo if available (helps avoid proxy cache); it's fine even for free users.
       if (logoAttachment) attachments.push(logoAttachment);
 
       await resend.emails.send({
@@ -386,10 +276,7 @@ export default async function handler(req, res) {
       });
 
       await supabase.from("email_logs").insert({
-        user_id: user.id,
-        email: user.email,
-        status: "sent",
-        metadata: { type: "weekly" },
+        user_id: user.id, email: user.email, status: "sent", metadata: { type: "weekly" },
       });
 
       sentCount += 1;
@@ -398,8 +285,7 @@ export default async function handler(req, res) {
     return res.status(200).json({ message: "Digest run finished", sent: sentCount });
   } catch (err) {
     console.error("💥 Unhandled error:", err);
-    const msg =
-      err && typeof err === "object" && "message" in err ? err.message : String(err);
+    const msg = (err && typeof err === "object" && "message" in err) ? err.message : String(err);
     return res.status(500).json({ error: msg || "Failed to send digest" });
   }
 }

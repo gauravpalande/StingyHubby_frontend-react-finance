@@ -12,6 +12,8 @@ import EditableFinancialHistory from './components/EditableFinancialHistory';
 import GoalSettings from './components/GoalSettings';
 import PreferencesPage from './pages/PreferencesPage';
 import FeedbackForm from './components/FeedbackForm';
+import AuthCallback from "./pages/AuthCallback";
+
 
 const App: React.FC = () => {
   const session = useSession();
@@ -35,6 +37,7 @@ const App: React.FC = () => {
             <Route path="preferences" element={<PreferencesPage />} />
             <Route path="feedback" element={<FeedbackForm />} />
             <Route path="about" element={<AboutPage />} /> {/* ✅ Still available inside sidebar if needed */}
+            <Route path="/auth/callback" element={<AuthCallback />} />
           </Route>
         )}
       </Routes>
