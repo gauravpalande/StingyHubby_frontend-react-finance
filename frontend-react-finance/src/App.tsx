@@ -15,29 +15,19 @@ import PreferencesPage from "./pages/PreferencesPage";
 import FeedbackForm from "./components/FeedbackForm";
 import AuthCallback from "./pages/AuthCallback";
 
-/** Guard: show a helpful screen if not signed in (prevents blank page) */
+/** Guard: redirect to home with ?next=... when not signed in */
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const session = useSession();
   const location = useLocation();
 
-  // While session is null at first render, auth-helpers usually updates quickly.
-  // If you prefer a spinner while checking, you could render one here.
   if (!session) {
-    // Option A: send them to home/login, but remember where they wanted to go
+    // Redirect to Home (or your Login page) and preserve the intended URL
     return (
-      <div style={{ padding: 24, fontFamily: "system-ui" }}>
-        <h3>Sign in required</h3>
-        <p>You need to sign in to view this page.</p>
-        <p>
-          <a href={`/?next=${encodeURIComponent(location.pathname + location.search)}`}>
-            Go to sign in
-          </a>
-        </p>
-      </div>
+      <Navigate
+        to={`/?next=${encodeURIComponent(location.pathname + location.search)}`}
+        replace
+      />
     );
-
-    // Option B (redirect):
-    // return <Navigate to={`/?next=${encodeURIComponent(location.pathname + location.search)}`} replace />;
   }
 
   return <>{children}</>;
