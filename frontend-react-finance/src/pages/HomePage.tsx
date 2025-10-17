@@ -17,7 +17,7 @@ const HomePage: React.FC = () => {
   const location = useLocation();
   const [search] = useSearchParams();
 
-  const nextPath = search.get("next") || "/app";
+  const nextPath = search.get("next") || "/";
   const authRedirect = useMemo(
     () => `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`,
     [nextPath]
