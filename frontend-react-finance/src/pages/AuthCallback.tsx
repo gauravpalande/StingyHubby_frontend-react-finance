@@ -15,25 +15,18 @@ export default function AuthCallback() {
   useEffect(() => {
     (async () => {
       try {
+        // PKCE / OAuth: Supabase attaches ?code=...
         await supabase.auth.exchangeCodeForSession(window.location.href);
       } catch (err) {
         console.error("Auth callback error:", err);
       } finally {
-        // Prefer query, else localStorage, else /app
-        const rawNext =
-          search.get("next") ||
-          localStorage.getItem("nextAfterLogin") ||
-          "/app";
-
-        // Normalize common typo: /app/preference → /app/preferences
-        const next = rawNext.replace(
-          /^\/app\/preference(\/|$)/,
-          "/app/preferences$1"
-        );
-
-        // Clear fallback so it doesn't affect future logins
+        // 1) Prefer the explicit ?next=...
+        const fromQuery = search.get("next");
+        // 2) Fallback to what we saved before redirect (see HomePage)
+        const fromStorage = localStorage.getItem("nextAfterLogin") || undefined;
         localStorage.removeItem("nextAfterLogin");
 
+        const next = fromQuery || fromStorage || "/app";
         navigate(next, { replace: true });
       }
     })();
