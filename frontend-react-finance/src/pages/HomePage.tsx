@@ -16,9 +16,15 @@ const HomePage: React.FC = () => {
   const location = useLocation();
   const [search] = useSearchParams();
 
-  const nextPath = search.get("next") || "/app";
+  // Only navigate after sign-in if a next param was provided (e.g., from email link)
+  const nextPath = search.get("next") || null;
+
+  // Auth callback with next preservation
   const authRedirect = useMemo(
-    () => `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`,
+    () =>
+      `${window.location.origin}/auth/callback?next=${encodeURIComponent(
+        nextPath || "/app"
+      )}`,
     [nextPath]
   );
 
@@ -27,15 +33,17 @@ const HomePage: React.FC = () => {
     window.location.href = "/";
   };
 
-  // 1) Navigate ASAP when signed in (don't block on DB upsert)
+  // Navigate to `next` ONLY if it's provided (e.g., arriving from email link)
   useEffect(() => {
     if (!session) return;
+    if (!nextPath) return; // ← Stay on "/" if no explicit next target
+    // If we're not already at an /app page, go to the requested next page
     if (!location.pathname.startsWith("/app")) {
       navigate(nextPath, { replace: true });
     }
-  }, [session, location.pathname, nextPath, navigate]);
+  }, [session, nextPath, location.pathname, navigate]);
 
-  // 2) Sync user in the background (no navigation here)
+  // Sync user in the background (non-blocking)
   useEffect(() => {
     (async () => {
       if (!session?.user) return;
@@ -56,23 +64,10 @@ const HomePage: React.FC = () => {
 
   // Keep a local fallback for the callback
   useEffect(() => {
-    localStorage.setItem("nextAfterLogin", nextPath);
+    localStorage.setItem("nextAfterLogin", nextPath || "/app");
   }, [nextPath]);
 
-  // If signed in and still on "/", show a tiny progress with a fallback link
-  if (session && location.pathname === "/") {
-    return (
-      <div style={{ padding: 24, fontFamily: "system-ui" }}>
-        <p>Redirecting…</p>
-        <p>
-          If this takes more than a second,{" "}
-          <a href={nextPath}>click here</a>.
-        </p>
-      </div>
-    );
-  }
-
-  // Signed-in view (if someone visits "/" after login)
+  // ---------- Signed-in view (show banner + Sign Out on "/") ----------
   if (session) {
     return (
       <SidebarLayout sidebarWidth={sidebarWidth}>
@@ -85,8 +80,14 @@ const HomePage: React.FC = () => {
             margin: "0 auto",
           }}
         >
-          <img src={banner} alt="PennyWize Banner" style={{ width: "100%", marginBottom: 24 }} />
-          <div style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%" }}>
+          <img
+            src={banner}
+            alt="PennyWize Banner"
+            style={{ width: "100%", marginBottom: 24 }}
+          />
+          <div
+            style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%" }}
+          >
             <h2 style={{ width: "100%", margin: 0, textAlign: "center" }}>
               Welcome, {session.user.email}!
             </h2>
@@ -99,7 +100,7 @@ const HomePage: React.FC = () => {
     );
   }
 
-  // Logged-out view
+  // ---------- Logged-out view ----------
   return (
     <div style={{ display: "flex", height: "100vh", background: "#f1f3f5" }}>
       {/* Left: Login UI */}
@@ -154,7 +155,7 @@ const HomePage: React.FC = () => {
         </div>
       </div>
 
-      {/* Right: Features section */}
+      {/* Right: Features */}
       <div
         style={{
           width: "fit-content",
@@ -169,7 +170,6 @@ const HomePage: React.FC = () => {
           gap: 24,
         }}
       >
-        {/* Free Features */}
         <section>
           <h2 style={{ marginBottom: "0.75rem" }}>Free Features</h2>
           <ul style={{ fontSize: "1rem", lineHeight: "1.8", paddingLeft: 16 }}>
@@ -186,7 +186,6 @@ const HomePage: React.FC = () => {
           </ul>
         </section>
 
-        {/* Paid Features */}
         <section>
           <h2 style={{ marginBottom: "0.75rem" }}>Paid Features</h2>
           <ul style={{ fontSize: "1rem", lineHeight: "1.8", paddingLeft: 16 }}>
