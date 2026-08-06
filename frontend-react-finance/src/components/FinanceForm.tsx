@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useSupabaseClient, useUser } from '@supabase/auth-helpers-react';
-import { getSTFinancialAdvice, getLTFinancialAdvice, getGoalsFinancialAdvice, getOLFinancialAdvice } from '../utils/suggestions';
+import { generateFinancialSuggestions } from '../utils/suggestions';
 import type { FormData } from '../types/formTypes';
 
 const spinnerStyle: React.CSSProperties = {
@@ -36,16 +36,19 @@ const FinanceForm: React.FC = () => {
   .eq('user_id', user.id)
   .single();
 
-    const short_term_suggestion = await getSTFinancialAdvice(data, goals);
-    const long_term_suggestion = await getLTFinancialAdvice(data, goals);
-    const goal_suggestion = await getGoalsFinancialAdvice(data, goals);
-    const oneline_suggestion = await getOLFinancialAdvice(data, goals);
+    let suggestions;
+    try {
+      suggestions = await generateFinancialSuggestions(data, goals);
+    } catch (error) {
+      console.error('Suggestion generation error:', error);
+      setIsSubmitting(false);
+      alert('There was an error generating suggestions. Please try again.');
+      return;
+    }
+
     const payload = {
       ...data,
-      short_term_suggestion,
-      long_term_suggestion,
-      goal_suggestion,
-      oneline_suggestion,
+      ...suggestions,
       user_id: user.id,
     };
 
