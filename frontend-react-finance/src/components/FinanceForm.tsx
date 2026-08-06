@@ -42,7 +42,11 @@ const FinanceForm: React.FC = () => {
     } catch (error) {
       console.error('Suggestion generation error:', error);
       setIsSubmitting(false);
-      alert('There was an error generating suggestions. Please try again.');
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'There was an error generating suggestions. Please try again.';
+      alert(message);
       return;
     }
 
