@@ -1,4 +1,5 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
 
 type SuggestionValue = number | string | null | undefined;
@@ -17,6 +18,17 @@ type SuggestionKey =
 
 type FinancialSuggestions = Record<SuggestionKey, string>;
 
+type AuditEvent =
+  | 'suggestions.request_received'
+  | 'suggestions.auth_failed'
+  | 'suggestions.auth_succeeded'
+  | 'suggestions.validation_failed'
+  | 'suggestions.model_fallback'
+  | 'suggestions.generated'
+  | 'suggestions.request_failed';
+
+type AuditMetadata = Record<string, string | number | boolean | undefined>;
+
 class ApiError extends Error {
   constructor(
     message: string,
@@ -30,6 +42,25 @@ const OPENAI_SUGGESTION_MODELS = ['gpt-5.6-luna', 'gpt-4.1-nano'] as const;
 const MAX_SUGGESTION_OUTPUT_TOKENS = 800;
 
 let openai: OpenAI | null = null;
+let supabase: SupabaseClient | null = null;
+
+function createRequestId(req: VercelRequest) {
+  const vercelRequestId = req.headers['x-vercel-id'];
+  const requestId = Array.isArray(vercelRequestId) ? vercelRequestId[0] : vercelRequestId;
+
+  return requestId || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function writeAuditLog(event: AuditEvent, metadata: AuditMetadata = {}) {
+  console.info(
+    '[audit]',
+    JSON.stringify({
+      event,
+      timestamp: new Date().toISOString(),
+      ...metadata,
+    })
+  );
+}
 
 function getOpenAI() {
   const apiKey = process.env.OPENAI_API_KEY;
@@ -46,6 +77,56 @@ function getOpenAI() {
   }
 
   return openai;
+}
+
+function getSupabase() {
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    throw new ApiError(
+      'Supabase server credentials are missing. Add SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to Vercel, then redeploy.',
+      500
+    );
+  }
+
+  if (!supabase) {
+    supabase = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { persistSession: false },
+    });
+  }
+
+  return supabase;
+}
+
+function getBearerToken(req: VercelRequest) {
+  const header = req.headers.authorization;
+  const authorization = Array.isArray(header) ? header[0] : header;
+  const match = authorization?.match(/^Bearer\s+(.+)$/i);
+
+  return match?.[1];
+}
+
+async function requireAuthenticatedUser(req: VercelRequest, requestId: string) {
+  const token = getBearerToken(req);
+
+  if (!token) {
+    writeAuditLog('suggestions.auth_failed', { requestId, reason: 'missing_bearer_token' });
+    throw new ApiError('You must be logged in to generate financial suggestions.', 401);
+  }
+
+  const {
+    data: { user },
+    error,
+  } = await getSupabase().auth.getUser(token);
+
+  if (error || !user) {
+    writeAuditLog('suggestions.auth_failed', { requestId, reason: 'invalid_or_expired_token' });
+    throw new ApiError('Your session expired. Sign in again to generate financial suggestions.', 401);
+  }
+
+  writeAuditLog('suggestions.auth_succeeded', { requestId, userId: user.id });
+  return user;
 }
 
 function value(source: FinancialInput | null | undefined, key: string) {
@@ -156,7 +237,7 @@ function parseSuggestions(raw: string): FinancialSuggestions {
   };
 }
 
-async function generateSuggestions(financialSummary: string) {
+async function generateSuggestions(financialSummary: string, requestId: string, userId: string) {
   for (const model of OPENAI_SUGGESTION_MODELS) {
     try {
       const response = await getOpenAI().responses.create({
@@ -171,7 +252,13 @@ async function generateSuggestions(financialSummary: string) {
 
       const shouldTryNextModel = isModelAccessError(error) && model !== OPENAI_SUGGESTION_MODELS.at(-1);
       if (shouldTryNextModel) {
-        console.warn(`[generate-suggestions] Falling back from ${model}:`, getOpenAIErrorMessage(error, model));
+        writeAuditLog('suggestions.model_fallback', {
+          requestId,
+          userId,
+          model,
+          fallbackModel: OPENAI_SUGGESTION_MODELS[1],
+          reason: getOpenAIErrorMessage(error, model),
+        });
         continue;
       }
 
@@ -183,24 +270,45 @@ async function generateSuggestions(financialSummary: string) {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const requestId = createRequestId(req);
+  const startedAt = Date.now();
+
+  writeAuditLog('suggestions.request_received', { requestId, method: req.method });
+
   if (req.method !== 'POST') {
+    writeAuditLog('suggestions.validation_failed', { requestId, reason: 'method_not_allowed', statusCode: 405 });
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
+    const user = await requireAuthenticatedUser(req, requestId);
+
     const { latest, goals } = (req.body ?? {}) as SuggestionRequest;
 
     if (!latest || typeof latest !== 'object') {
+      writeAuditLog('suggestions.validation_failed', { requestId, userId: user.id, reason: 'missing_latest_financial_data', statusCode: 400 });
       return res.status(400).json({ error: 'Missing latest financial data' });
     }
 
-    const suggestions = await generateSuggestions(buildFinancialSummary(latest, goals));
+    const suggestions = await generateSuggestions(buildFinancialSummary(latest, goals), requestId, user.id);
 
+    writeAuditLog('suggestions.generated', {
+      requestId,
+      userId: user.id,
+      durationMs: Date.now() - startedAt,
+      statusCode: 200,
+    });
     return res.status(200).json(suggestions);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     console.error('[generate-suggestions] Error:', message);
     const statusCode = error instanceof ApiError ? error.statusCode : 500;
+    writeAuditLog('suggestions.request_failed', {
+      requestId,
+      durationMs: Date.now() - startedAt,
+      statusCode,
+      reason: message,
+    });
     return res.status(statusCode).json({ error: message });
   }
 }

@@ -7,11 +7,15 @@ export type FinancialSuggestions = {
 
 export async function generateFinancialSuggestions(
   latest: object,
-  goals: object | null
+  goals: object | null,
+  accessToken: string
 ): Promise<FinancialSuggestions> {
   const response = await fetch('/api/generate-suggestions', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
     body: JSON.stringify({ latest, goals }),
   });
 

@@ -38,7 +38,16 @@ const FinanceForm: React.FC = () => {
 
     let suggestions;
     try {
-      suggestions = await generateFinancialSuggestions(data, goals);
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+
+      if (sessionError || !session?.access_token) {
+        throw new Error('Your session expired. Sign in again to generate financial suggestions.');
+      }
+
+      suggestions = await generateFinancialSuggestions(data, goals, session.access_token);
     } catch (error) {
       console.error('Suggestion generation error:', error);
       setIsSubmitting(false);

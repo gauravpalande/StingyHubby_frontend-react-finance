@@ -12,6 +12,21 @@ The app generates financial suggestions in `api/generate-suggestions.ts` with Op
 
 After deploying, remove any `OPENAI_MODEL` variable from Vercel to avoid confusion. The app now pins the suggestion endpoint to the low-cost model list in code.
 
+## API security for suggestions
+
+The `/api/generate-suggestions` endpoint requires a Supabase access token before it calls OpenAI. This protects the paid OpenAI API key from unauthenticated browser requests.
+
+- Frontend: `FinanceForm` reads the current Supabase session before generating suggestions.
+- Request: `generateFinancialSuggestions` sends `Authorization: Bearer <access_token>`.
+- Backend: `api/generate-suggestions.ts` validates the token with Supabase Auth.
+- Required Vercel environment variables: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `OPENAI_API_KEY`.
+
+## Audit logging
+
+The `/api/generate-suggestions` endpoint writes structured audit events to Vercel function logs. These logs include request IDs, user IDs, status codes, durations, validation failures, authentication failures, OpenAI model fallback events, and successful suggestion generation.
+
+Financial input values are not written to audit logs.
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:
