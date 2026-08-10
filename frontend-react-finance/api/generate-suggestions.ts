@@ -26,7 +26,8 @@ class ApiError extends Error {
   }
 }
 
-const model = process.env.OPENAI_MODEL || 'gpt-5.6-luna';
+const OPENAI_SUGGESTION_MODEL = 'gpt-5.6-luna';
+const MAX_SUGGESTION_OUTPUT_TOKENS = 500;
 
 let openai: OpenAI | null = null;
 
@@ -102,11 +103,11 @@ function getOpenAIErrorMessage(error: unknown) {
   }
 
   if (status === 403) {
-    return `OpenAI refused access to the configured model (${model}). Set OPENAI_MODEL to a model your OpenAI project can use, then redeploy.`;
+    return `OpenAI refused access to the configured model (${OPENAI_SUGGESTION_MODEL}). Grant the project access to this model, then redeploy.`;
   }
 
   if (status === 404 || code === 'model_not_found') {
-    return `OpenAI could not find or access the configured model (${model}). Update OPENAI_MODEL in Vercel or grant the project access, then redeploy.`;
+    return `OpenAI could not find or access the configured model (${OPENAI_SUGGESTION_MODEL}). Grant the project access to this model, then redeploy.`;
   }
 
   if (status === 429) {
@@ -145,9 +146,9 @@ function parseSuggestions(raw: string): FinancialSuggestions {
 async function generateSuggestions(financialSummary: string) {
   try {
     const response = await getOpenAI().responses.create({
-      model,
+      model: OPENAI_SUGGESTION_MODEL,
       input: buildPrompt(financialSummary),
-      max_output_tokens: 900,
+      max_output_tokens: MAX_SUGGESTION_OUTPUT_TOKENS,
     });
 
     return parseSuggestions(response.output_text);
