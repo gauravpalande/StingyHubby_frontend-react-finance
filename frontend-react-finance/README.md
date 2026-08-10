@@ -4,12 +4,13 @@
 
 The app generates financial suggestions in `api/generate-suggestions.ts` with OpenAI's Responses API.
 
-- Model used: `gpt-5.6-luna`
-- Why: OpenAI Docs list GPT-5.6 Luna as the GPT-5.6 model optimized for cost-sensitive workloads and the lowest-priced general text model in the GPT-5.6 family.
+- Primary model used: `gpt-5.6-luna`
+- Fallback model: `gpt-4.1-nano`, used only if the OpenAI project cannot access `gpt-5.6-luna`
+- Why: OpenAI Docs list GPT-5.6 Luna as the GPT-5.6 model optimized for cost-sensitive workloads and the lowest-priced general text model in the GPT-5.6 family. The fallback keeps production working for OpenAI projects that do not yet have access to that model.
 - Vercel environment variable required: `OPENAI_API_KEY`
 - Vercel environment variable no longer needed: `OPENAI_MODEL`
 
-After deploying, remove any `OPENAI_MODEL` variable from Vercel to avoid confusion. The app now pins the suggestion endpoint to `gpt-5.6-luna` in code.
+After deploying, remove any `OPENAI_MODEL` variable from Vercel to avoid confusion. The app now pins the suggestion endpoint to the low-cost model list in code.
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 

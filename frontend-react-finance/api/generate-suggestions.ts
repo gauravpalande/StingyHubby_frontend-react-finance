@@ -26,8 +26,8 @@ class ApiError extends Error {
   }
 }
 
-const OPENAI_SUGGESTION_MODEL = 'gpt-5.6-luna';
-const MAX_SUGGESTION_OUTPUT_TOKENS = 500;
+const OPENAI_SUGGESTION_MODELS = ['gpt-5.6-luna', 'gpt-4.1-nano'] as const;
+const MAX_SUGGESTION_OUTPUT_TOKENS = 800;
 
 let openai: OpenAI | null = null;
 
@@ -93,25 +93,38 @@ function getObject(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
 }
 
-function getOpenAIErrorMessage(error: unknown) {
+function isModelAccessError(error: unknown) {
   const openAIError = getObject(error);
   const status = openAIError.status;
   const code = openAIError.code;
+
+  return status === 403 || status === 404 || code === 'model_not_found';
+}
+
+function getOpenAIErrorMessage(error: unknown, model: string) {
+  const openAIError = getObject(error);
+  const status = openAIError.status;
+  const code = openAIError.code;
+  const message = typeof openAIError.message === 'string' ? openAIError.message : '';
 
   if (status === 401) {
     return 'OpenAI rejected the server API key. Verify the Vercel variable is named exactly OPENAI_API_KEY, uses a valid OpenAI API key, is enabled for Production, and redeploy.';
   }
 
   if (status === 403) {
-    return `OpenAI refused access to the configured model (${OPENAI_SUGGESTION_MODEL}). Grant the project access to this model, then redeploy.`;
+    return `OpenAI refused access to the configured model (${model}). Grant the project access to this model, then redeploy.`;
   }
 
   if (status === 404 || code === 'model_not_found') {
-    return `OpenAI could not find or access the configured model (${OPENAI_SUGGESTION_MODEL}). Grant the project access to this model, then redeploy.`;
+    return `OpenAI could not find or access the configured model (${model}). Grant the project access to this model, then redeploy.`;
   }
 
   if (status === 429) {
     return 'OpenAI rate limit or quota was reached. Check the OpenAI project billing, usage limits, and rate limits.';
+  }
+
+  if (message) {
+    return `OpenAI request failed: ${message}`;
   }
 
   return 'Failed to generate financial suggestions. Check the Vercel function logs for /api/generate-suggestions.';
@@ -144,18 +157,29 @@ function parseSuggestions(raw: string): FinancialSuggestions {
 }
 
 async function generateSuggestions(financialSummary: string) {
-  try {
-    const response = await getOpenAI().responses.create({
-      model: OPENAI_SUGGESTION_MODEL,
-      input: buildPrompt(financialSummary),
-      max_output_tokens: MAX_SUGGESTION_OUTPUT_TOKENS,
-    });
+  for (const model of OPENAI_SUGGESTION_MODELS) {
+    try {
+      const response = await getOpenAI().responses.create({
+        model,
+        input: buildPrompt(financialSummary),
+        max_output_tokens: MAX_SUGGESTION_OUTPUT_TOKENS,
+      });
 
-    return parseSuggestions(response.output_text);
-  } catch (error: unknown) {
-    if (error instanceof ApiError) throw error;
-    throw new ApiError(getOpenAIErrorMessage(error), 502);
+      return parseSuggestions(response.output_text);
+    } catch (error: unknown) {
+      if (error instanceof ApiError) throw error;
+
+      const shouldTryNextModel = isModelAccessError(error) && model !== OPENAI_SUGGESTION_MODELS.at(-1);
+      if (shouldTryNextModel) {
+        console.warn(`[generate-suggestions] Falling back from ${model}:`, getOpenAIErrorMessage(error, model));
+        continue;
+      }
+
+      throw new ApiError(getOpenAIErrorMessage(error, model), 502);
+    }
   }
+
+  throw new ApiError('Failed to generate financial suggestions. No OpenAI suggestion model was available.', 502);
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
