@@ -31,6 +31,29 @@ type ImportedSubmission = Record<ImportNumericField, number> & {
   created_at: string;
 };
 
+type FinancialHistoryRecord = Record<ImportNumericField, number | null> & {
+  id: string;
+  created_at: string;
+};
+
+type FinancialHistoryRow = FinancialHistoryRecord & {
+  timestamp: string;
+};
+
+type EditingState = Record<string, Partial<Record<ImportNumericField, number>>>;
+
+const CHART_KEYS: ImportNumericField[] = [
+  'income',
+  'checking',
+  'emergency',
+  'health',
+  'retirement',
+  'creditCards',
+  'mortgage',
+  'carPayments',
+  'utilities',
+];
+
 const IMPORT_HEADER_TO_FIELD: Record<string, ImportNumericField | 'created_at'> = {
   date: 'created_at',
   income: 'income',
@@ -156,8 +179,8 @@ function buildImportedSubmissions(csv: string, userId: string) {
 const EditableFinancialHistory: React.FC = () => {
   const supabase = useSupabaseClient();
   const user = useUser();
-  const [history, setHistory] = useState<any[]>([]);
-  const [editing, setEditing] = useState<{ [key: string]: any }>({});
+  const [history, setHistory] = useState<FinancialHistoryRow[]>([]);
+  const [editing, setEditing] = useState<EditingState>({});
   const [loading, setLoading] = useState(true);
   const [chartType, setChartType] = useState<'line' | 'bar'>('line');
   const [isPaid, setIsPaid] = useState<boolean>(false);
@@ -191,9 +214,9 @@ const EditableFinancialHistory: React.FC = () => {
 
     if (historyRes.data) {
       setHistory(
-        historyRes.data.map((d: any) => ({
-          ...d,
-          timestamp: new Date(d.created_at).toLocaleDateString(),
+        (historyRes.data as FinancialHistoryRecord[]).map((row) => ({
+          ...row,
+          timestamp: new Date(row.created_at).toLocaleDateString(),
         }))
       );
     }
@@ -210,7 +233,7 @@ const EditableFinancialHistory: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  const updateRow = (id: string, field: string, value: string) => {
+  const updateRow = (id: string, field: ImportNumericField, value: string) => {
     // Even if free users change inputs (should be disabled), guard anyway
     if (!isPaid) return;
     setEditing((prev) => ({
@@ -313,8 +336,6 @@ const EditableFinancialHistory: React.FC = () => {
     window.location.reload();
   };
 
-  const chartKeys = ['income', 'checking', 'emergency', 'health', 'retirement', 'creditCards', 'mortgage', 'carPayments', 'utilities'];
-
   return (
     <div style={{ marginTop: 40 }} ref={printRef}>
       <h3>Financial History</h3>
@@ -353,7 +374,7 @@ const EditableFinancialHistory: React.FC = () => {
               <YAxis />
               <Tooltip />
               <Legend />
-              {chartKeys.map((key, index) => (
+              {CHART_KEYS.map((key, index) => (
                 <Bar key={key} dataKey={key} fill={COLORS[index % COLORS.length]} />
               ))}
             </BarChart>
@@ -364,7 +385,7 @@ const EditableFinancialHistory: React.FC = () => {
               <YAxis />
               <Tooltip />
               <Legend />
-              {chartKeys.map((key, index) => (
+              {CHART_KEYS.map((key, index) => (
                 <Line key={key} type="monotone" dataKey={key} stroke={COLORS[index % COLORS.length]} />
               ))}
             </LineChart>
@@ -377,7 +398,7 @@ const EditableFinancialHistory: React.FC = () => {
           <thead>
             <tr>
               <th>Date</th>
-              {chartKeys.map((key) => (
+              {CHART_KEYS.map((key) => (
                 <th key={key}>{key.charAt(0).toUpperCase() + key.slice(1)}</th>
               ))}
               <th>Actions</th>
@@ -387,7 +408,7 @@ const EditableFinancialHistory: React.FC = () => {
             {history.map((row) => (
               <tr key={row.id}>
                 <td>{row.timestamp}</td>
-                {chartKeys.map((key) => (
+                {CHART_KEYS.map((key) => (
                   <td key={key}>
                     <input
                       type="number"
