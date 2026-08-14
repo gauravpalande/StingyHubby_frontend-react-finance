@@ -47,6 +47,92 @@ const readmeHighlights = [
   },
 ];
 
+const resumeSkillGroups = [
+  {
+    title: 'Languages',
+    items: ['C#', 'SQL', 'JavaScript', 'TypeScript'],
+  },
+  {
+    title: 'Frameworks & Libraries',
+    items: ['.NET Core', 'ASP.NET MVC', 'ASP.NET Web API', 'Entity Framework', 'React', 'Node.js'],
+  },
+  {
+    title: 'AI & Developer Productivity',
+    items: ['AI-assisted development', 'AI coding assistants', 'ChatGPT', 'GitHub Copilot', 'Prompt engineering', 'AI-generated code review'],
+  },
+  {
+    title: 'Cloud & DevOps',
+    items: ['AWS EC2', 'AWS Lambda', 'AWS S3', 'Vercel', 'Azure DevOps', 'CI/CD pipelines', 'Git', 'GitHub'],
+  },
+  {
+    title: 'Databases & Data',
+    items: ['SQL Server', 'T-SQL', 'PostgreSQL/Supabase', 'Database indexing', 'Query optimization', 'Database performance optimization', 'ETL pipelines'],
+  },
+  {
+    title: 'Architecture & APIs',
+    items: ['REST APIs', 'Web APIs', 'API design', 'Microservices', 'Distributed systems', 'Event-driven architecture', 'System design', 'Scalable web applications', 'Real-time scheduling systems'],
+  },
+  {
+    title: 'Security & Authentication',
+    items: ['OWASP', 'Veracode', 'SonarQube', 'RBAC', 'Row-Level Security', 'Authentication', 'Session management', 'API security', 'Audit logging'],
+  },
+  {
+    title: 'Testing & Quality',
+    items: ['xUnit', 'Moq', 'Integration testing', 'End-to-end testing', 'System integration testing', 'Automated testing', 'Debugging', 'Performance optimization', 'Production support'],
+  },
+  {
+    title: 'Engineering Leadership',
+    items: ['Code reviews', 'Technical design', 'Agile', 'Sprint planning', 'Mentoring', 'Technical leadership'],
+  },
+];
+
+const resumeExperience = [
+  {
+    company: 'T.E. Roberts Inc. - Irvine, CA',
+    role: 'Software Engineer',
+    dates: 'Nov 2025 - May 2026',
+    bullets: [
+      'Designed and launched the initial production version of a scheduling and project-management platform within seven days, then expanded it into a daily operational tool for field and office teams.',
+      'Built paving, vacuum, assignment, and project-scheduling workflows with drag-and-drop planning, recurring schedules, timeline management, employee and equipment assignments, searchable datasets, and PDF schedule generation.',
+      'Implemented end-to-end project lifecycle management, including project creation, archive and restoration workflows, project-specific permissions, audit logging, autosave, multi-project assignments, report tracking, and profit-and-loss modules.',
+      'Developed inventory, equipment, workforce, media, and project-documentation systems supported by normalized PostgreSQL schemas and Node.js ETL pipelines for Excel data ingestion.',
+      'Improved security, performance, scalability, and maintainability through row-level security, role-based access, database indexing, caching, modular refactoring, and automated testing.',
+      'Delivered interactive Gantt planning, responsive desktop and mobile experiences, PWA support, SMS and email workflows, push notifications, reporting dashboards, and PDF export capabilities.',
+    ],
+    tech:
+      'React, TypeScript, Node.js, PostgreSQL/Supabase, Row-Level Security, Vercel, Progressive Web Apps, REST APIs, drag-and-drop interfaces, PDF generation, authentication and authorization, Git, Excel import/export, notification systems',
+    links: [{ label: 'Application', href: 'https://ter-tools.vercel.app/' }],
+  },
+  {
+    company: 'Enlyte Inc. - Irvine, CA',
+    role: 'Software Engineer II',
+    dates: 'Nov 2017 - Apr 2025',
+    bullets: [
+      'Delivered large-scale workers compensation software solutions used by thousands of U.S. adjusters and medical staff.',
+      'Modernized monolithic .NET applications into AWS-based microservices, reducing hosting costs and improving reliability.',
+      'Improved application uptime by 20% through performance optimization and asynchronous redesign of high-traffic endpoints.',
+      'Optimized SQL queries and database indexes, increasing database throughput by 25%.',
+      'Remediated Veracode and SonarQube findings, reducing exploitable security risks by 30%.',
+      'Built modern React components that improved page-load performance and accessibility.',
+      'Led an onshore and offshore team for two years, driving sprint planning, code reviews, and technical design.',
+      'Earned multiple SPOT Awards for innovation, leadership, and cross-team partnership.',
+    ],
+    tech:
+      'C#, .NET Core, ASP.NET MVC, Entity Framework, SQL Server, React, JavaScript, AWS EC2, AWS Lambda, AWS S3, Azure DevOps, REST APIs, microservices, Git',
+  },
+  {
+    company: 'Technosoft Corporation - Simi Valley, CA',
+    role: 'Software Engineer',
+    dates: 'Oct 2017 - Nov 2017',
+    bullets: [
+      'Built REST APIs and .NET/C++ modules for Johnson Controls P2000 Access Control System.',
+      'Developed event-driven components and dynamic monitoring UI.',
+      'Executed system integration testing to ensure cross-module consistency.',
+    ],
+    tech: 'C#, .NET, C++, REST APIs, event-driven architecture, integration testing',
+  },
+];
+
 const AboutContent: React.FC<{ onClose: () => void }> = ({ onClose }) => (
   <div style={{
     position: 'relative',
@@ -111,12 +197,12 @@ const AboutContent: React.FC<{ onClose: () => void }> = ({ onClose }) => (
       }}>
         <h3 style={{ margin: 0, color: '#2d3748', fontSize: 20 }}>Gaurav Palande</h3>
         <div style={{ color: '#4a5568', margin: '8px 0' }}>
-          Chino Hills, CA &nbsp;|&nbsp; (562) 331-9226 &nbsp;|&nbsp; gaurav.palande147@gmail.com
+          Bellevue, WA 98005 &nbsp;|&nbsp; (562) 331-9226 &nbsp;|&nbsp; gaurav.palande147@gmail.com
         </div>
         <div style={{ marginBottom: 8 }}>
           <a href="https://www.linkedin.com/in/gaurav-palande-50549550" target="_blank" rel="noopener noreferrer" style={{ color: '#3182ce', marginRight: 16 }}>LinkedIn</a>
           <a href="https://github.com/gauravpalande" target="_blank" rel="noopener noreferrer" style={{ color: '#3182ce', marginRight: 16 }}>GitHub</a>
-          <a href="https://pennywize.vercel.app" target="_blank" rel="noopener noreferrer" style={{ color: '#3182ce' }}>Website</a>
+          <a href="https://pennywize.vercel.app/app/about" target="_blank" rel="noopener noreferrer" style={{ color: '#3182ce' }}>Portfolio</a>
         </div>
       </div>
     </section>
@@ -125,14 +211,66 @@ const AboutContent: React.FC<{ onClose: () => void }> = ({ onClose }) => (
     <section style={{ marginBottom: 24 }}>
       <h2 style={{ color: '#2b6cb0', fontSize: 20, marginBottom: 8 }}>Professional Summary</h2>
       <p style={{ color: '#4a5568' }}>
-        Experienced Software Engineer with 10+ years of expertise in building secure, high-performance enterprise applications using C#, .NET Core, SQL Server, and cloud-native solutions on AWS. Proven ability to reduce system downtime, improve database efficiency, and lead modernization efforts in Agile environments. Recognized with multiple awards for technical excellence and cross-team collaboration.
+        Full-stack and backend Software Engineer with 8+ years of experience building and modernizing scalable enterprise applications. Specialized in C#, .NET, AWS, SQL Server, React, TypeScript, microservices, and system design. Proven success improving application performance, reliability, security, and database efficiency across cloud and web platforms. Experienced in leading Agile teams, mentoring engineers, and delivering complex features from design through production. Recently launched the initial production version of a scheduling and project-management platform within seven days, then expanded it into a daily operational tool using React, TypeScript, Node.js, PostgreSQL/Supabase, and Vercel.
       </p>
+    </section>
+
+    {/* Skills */}
+    <section style={{ marginBottom: 24 }}>
+      <h2 style={{ color: '#2b6cb0', fontSize: 20, marginBottom: 8 }}>Technical Skills</h2>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
+        {resumeSkillGroups.map((group) => (
+          <div key={group.title} style={cardStyle}>
+            <strong>{group.title}:</strong>
+            <p style={{ color: '#4a5568', margin: '6px 0 0' }}>{group.items.join(', ')}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    {/* Experience */}
+    <section style={{ marginBottom: 24 }}>
+      <h2 style={{ color: '#2b6cb0', fontSize: 20, marginBottom: 8 }}>Professional Experience</h2>
+      {resumeExperience.map((job) => (
+        <div key={`${job.company}-${job.dates}`} style={{ color: '#4a5568', marginBottom: 16 }}>
+          <strong>{job.company}</strong><br />
+          {job.role} | {job.dates}
+          <ul style={{ margin: '6px 0 8px', paddingLeft: 20 }}>
+            {job.bullets.map((bullet) => (
+              <li key={bullet}>{bullet}</li>
+            ))}
+          </ul>
+          <div><strong>Tech:</strong> {job.tech}</div>
+          {job.links && (
+            <div style={{ marginTop: 6 }}>
+              {job.links.map((link) => (
+                <a key={link.href} href={link.href} target="_blank" rel="noopener noreferrer" style={{ color: '#3182ce', marginRight: 16 }}>
+                  {link.label}
+                </a>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+    </section>
+
+    <section style={{ marginBottom: 24 }}>
+      <h2 style={{ color: '#2b6cb0', fontSize: 20, marginBottom: 8 }}>Selected Project</h2>
+      <div style={{ color: '#4a5568' }}>
+        <strong>PennyWize - Full-Stack Personal Finance Application</strong>
+        <p>
+          Developed and deployed a full-stack personal finance application with responsive UI,
+          secure authentication, reusable components, financial workflows, and Vercel-based cloud deployment.
+        </p>
+        <a href="https://pennywize.vercel.app/" target="_blank" rel="noopener noreferrer" style={{ color: '#3182ce', marginRight: 16 }}>Application</a>
+        <a href="https://github.com/gauravpalande/StingyHubby_frontend-react-finance" target="_blank" rel="noopener noreferrer" style={{ color: '#3182ce' }}>GitHub</a>
+      </div>
     </section>
 
     <section style={{ marginBottom: 24 }}>
       <h2 style={{ color: '#2b6cb0', fontSize: 20, marginBottom: 8 }}>Certification</h2>
       <ul style={{ color: '#4a5568', margin: 0, paddingLeft: 20 }}>
-        <li>AWS Certified Cloud Practitioner, Amazon Web Services (2024)</li>
+        <li>AWS Certified Cloud Practitioner | Amazon Web Services | 2024</li>
       </ul>
     </section>
 
@@ -140,99 +278,13 @@ const AboutContent: React.FC<{ onClose: () => void }> = ({ onClose }) => (
       <h2 style={{ color: '#2b6cb0', fontSize: 20, marginBottom: 8 }}>Education</h2>
       <div style={{ color: '#4a5568', marginBottom: 8 }}>
         <strong>Master of Science in Computer Science</strong><br />
-        California State University, Long Beach, CA<br />
+        California State University, Long Beach<br />
         GPA: 3.8 | Phi Kappa Phi Honors | Aug 2015 - May 2017
       </div>
       <div style={{ color: '#4a5568' }}>
         <strong>Bachelor of Engineering in Computer Engineering</strong><br />
-        University of Mumbai, Mumbai, India<br />
+        University of Mumbai<br />
         GPA: 3.6 | Jul 2008 - May 2012
-      </div>
-    </section>
-
-    {/* Skills */}
-    <section style={{ marginBottom: 24 }}>
-      <h2 style={{ color: '#2b6cb0', fontSize: 20, marginBottom: 8 }}>Technical Skills</h2>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 32 }}>
-        <div>
-          <strong>Programming Languages:</strong>
-          <ul style={{ margin: 0, paddingLeft: 20 }}>
-            <li>C#, SQL, HTML, CSS, JavaScript, C++</li>
-          </ul>
-          <strong>Frameworks & Technologies:</strong>
-          <ul style={{ margin: 0, paddingLeft: 20 }}>
-            <li>.NET Core, Entity Framework, ASP.NET MVC, REST API, React</li>
-          </ul>
-          <strong>Architecture & Design:</strong>
-          <ul style={{ margin: 0, paddingLeft: 20 }}>
-            <li>Design Patterns (Factory, Repository, Dependency Injection), OOP, Agile, Scrum, Asynchronous Programming</li>
-          </ul>
-        </div>
-        <div>
-          <strong>Databases:</strong>
-          <ul style={{ margin: 0, paddingLeft: 20 }}>
-            <li>SQL Server</li>
-          </ul>
-          <strong>Tools:</strong>
-          <ul style={{ margin: 0, paddingLeft: 20 }}>
-            <li>Git, Veracode, SonarQube, Sonatype, CI/CD pipeline</li>
-          </ul>
-          <strong>Testing:</strong>
-          <ul style={{ margin: 0, paddingLeft: 20 }}>
-            <li>Unit Testing, Integration Testing, Moq, xUnit</li>
-          </ul>
-          <strong>Cloud Platforms:</strong>
-          <ul style={{ margin: 0, paddingLeft: 20 }}>
-            <li>AWS (EC2, Lambda, S3), Azure DevOps</li>
-          </ul>
-        </div>
-      </div>
-    </section>
-
-    {/* Experience */}
-    <section>
-      <h2 style={{ color: '#2b6cb0', fontSize: 20, marginBottom: 8 }}>Professional Experience</h2>
-      {/* Enlyte */}
-      <div style={{ color: '#4a5568', marginBottom: 16 }}>
-        <strong>Enlyte Inc. - Irvine, CA</strong><br />
-        Software Engineer | Nov 2017 - Present
-        <ul style={{ margin: 0, paddingLeft: 20 }}>
-          <li>Developed and maintained U.S. Workers’ Compensation-related applications using C#, ASP.NET, .NET, and SQL Server</li>
-          <li>Built UI components using HTML, CSS, JavaScript, ASP.NET, and React</li>
-          <li>Applied Design Patterns, OOP, and Asynchronous Programming principles in an Agile environment</li>
-          <li>Migrated application infrastructure to AWS cloud</li>
-          <li>Led initiatives to identify and remediate security vulnerabilities using Veracode, SonarQube, and Sonatype</li>
-          <li>Implemented OWASP-compliant secure coding practices</li>
-          <li>Mentored new team members through knowledge transfer sessions and code reviews</li>
-          <li>Conducted rigorous unit and integration tests using the Moq framework</li>
-          <li>Reduced application vulnerabilities by 30 percent</li>
-          <li>Reduced system downtime by 20 percent through code optimizations to handle high-traffic volumes</li>
-          <li>Improved database performance by 25 percent through optimizing queries</li>
-          <li>Recognized with multiple SPOT awards for technical excellence</li>
-        </ul>
-      </div>
-      {/* Technosoft */}
-      <div style={{ color: '#4a5568', marginBottom: 16 }}>
-        <strong>Technosoft Corporation - Simi Valley, CA</strong><br />
-        Software Engineer | Oct 2017 - Nov 2017
-        <ul style={{ margin: 0, paddingLeft: 20 }}>
-          <li>Developed REST APIs and C++/.NET applications for Johnson Controls’ P2000 Access Control System</li>
-          <li>Designed and implemented a MVC-based system for centralized event management</li>
-          <li>Conducted comprehensive testing to ensure seamless system integration</li>
-        </ul>
-      </div>
-      {/* Syntel */}
-      <div style={{ color: '#4a5568' }}>
-        <strong>Syntel Ltd. - Mumbai, India</strong><br />
-        Software Engineer | Dec 2012 - Jul 2015
-        <ul style={{ margin: 0, paddingLeft: 20 }}>
-          <li>Built a US Medicare-related application for Humana Inc. using C#, .NET, ASP.NET MVC, SQL Server and Agile methodology</li>
-          <li>Delivered end-to-end features related to health insurance claims processing</li>
-          <li>Executed unit tests and system integration tests for every functionality</li>
-          <li>Analyzed user stories, implemented bug-free features, and generated weekly defect reports for management review</li>
-          <li>Received “Gold Star” from the client product owner for insightful contributions during sprint planning</li>
-          <li>Awarded the ‘SPOT Recognition’ award by Syntel management for dedication to project success</li>
-        </ul>
       </div>
     </section>
       </div>
