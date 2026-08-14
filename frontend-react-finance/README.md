@@ -27,6 +27,18 @@ The `/api/generate-suggestions` endpoint writes structured audit events to Verce
 
 Financial input values are not written to audit logs.
 
+## Database indexing
+
+The app includes a Supabase/PostgreSQL migration at `supabase/migrations/20260814000000_add_core_query_indexes.sql` for the highest-traffic query patterns.
+
+Apply it with:
+
+```bash
+supabase db push
+```
+
+The migration adds indexes for finance history lookups, preference reads, digest recipient discovery, goal reads, and Stripe customer lookups.
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:
