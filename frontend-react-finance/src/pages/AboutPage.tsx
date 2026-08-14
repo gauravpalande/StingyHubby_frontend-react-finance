@@ -2,6 +2,51 @@ import React from 'react';
 import { useSessionContext } from '@supabase/auth-helpers-react';
 import { useNavigate } from 'react-router-dom';
 
+const cardStyle: React.CSSProperties = {
+  background: '#f7fafc',
+  padding: 20,
+  borderRadius: 8,
+  boxShadow: '0 1px 4px rgba(0,0,0,0.03)',
+};
+
+const readmeHighlights = [
+  {
+    title: 'Personal Finance Insights',
+    description:
+      'PennyWize tracks income, expenses, savings goals, and financial history so users can understand their money in one place.',
+  },
+  {
+    title: 'AI Suggestions',
+    description:
+      'The app uses OpenAI-powered suggestions with a cost-conscious model strategy for short-term, long-term, goal-based, and concise financial guidance.',
+  },
+  {
+    title: 'Secure API Access',
+    description:
+      'Suggestion generation is protected by Supabase authentication so only signed-in users can request personalized advice.',
+  },
+  {
+    title: 'Operational Visibility',
+    description:
+      'The backend records high-level audit events such as request outcomes, authentication results, validation failures, and suggestion generation activity.',
+  },
+  {
+    title: 'Database Performance',
+    description:
+      'Supabase and PostgreSQL are tuned with targeted indexes and optimized queries for finance history, preferences, goals, and reporting workflows.',
+  },
+  {
+    title: 'Modern Web Stack',
+    description:
+      'The frontend is built with React, TypeScript, Vite, responsive UI patterns, and Vercel deployment for a fast web experience.',
+  },
+  {
+    title: 'Privacy-Conscious Documentation',
+    description:
+      'This public overview intentionally stays high level and does not expose API keys, environment variable values, project references, or financial input values.',
+  },
+];
+
 const AboutContent: React.FC<{ onClose: () => void }> = ({ onClose }) => (
   <div style={{
     position: 'relative',
@@ -36,23 +81,22 @@ const AboutContent: React.FC<{ onClose: () => void }> = ({ onClose }) => (
       offering GPT-powered advice, and visualizing your financial history.
     </p>
 
-    {/* PennyWize Youtube Channel Section */}
+    {/* Keep this high-level overview aligned with README.md whenever README.md changes. */}
     <section style={{ marginBottom: 32 }}>
-      <h2 style={{ color: '#2b6cb0', fontSize: 22, marginBottom: 8 }}>PennyWize Youtube Channel</h2>
-      <div style={{
-      background: '#f7fafc',
-      padding: 20,
-      borderRadius: 8,
-      boxShadow: '0 1px 4px rgba(0,0,0,0.03)'
-      }}>
-      <a
-        href="https://www.youtube.com/@PennyWize1"
-        target="_blank"
-        rel="noopener noreferrer"
-        style={{ color: '#3182ce', fontWeight: 500, fontSize: 16 }}
-      >
-        www.youtube.com/@PennyWize1
-      </a>
+      <h2 style={{ color: '#2b6cb0', fontSize: 22, marginBottom: 8 }}>Application Overview</h2>
+      <div style={cardStyle}>
+        <p style={{ color: '#4a5568', marginTop: 0 }}>
+          PennyWize combines personal finance tracking, AI-assisted suggestions, secure API access,
+          auditability, database performance work, and a modern React deployment stack.
+        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
+          {readmeHighlights.map((item) => (
+            <div key={item.title}>
+              <h3 style={{ color: '#2d3748', fontSize: 17, margin: '0 0 6px' }}>{item.title}</h3>
+              <p style={{ color: '#4a5568', margin: 0 }}>{item.description}</p>
+            </div>
+          ))}
+        </div>
       </div>
     </section>
     
