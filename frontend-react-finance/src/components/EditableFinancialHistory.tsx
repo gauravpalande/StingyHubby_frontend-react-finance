@@ -32,7 +32,9 @@ const EditableFinancialHistory: React.FC = () => {
     const [historyRes, prefsRes, paidRes] = await Promise.all([
       supabase
         .from('submissions')
-        .select('*')
+        .select(
+          'id, created_at, income, checking, emergency, health, retirement, creditCards, mortgage, carPayments, utilities'
+        )
         .eq('user_id', user.id)
         .order('created_at', { ascending: true }),
       supabase

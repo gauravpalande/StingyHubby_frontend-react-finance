@@ -13,11 +13,11 @@ export const usePreferences = () => {
     const fetchPrefs = async () => {
       const { data } = await supabase
         .from('preferences')
-        .select('*')
+        .select('graph_type, show_suggestions, email_weekly_digest, email_monthly_digest')
         .eq('user_id', user.id)
-        .limit(1);
-      if (data && data.length > 0) {
-        setPrefs(data[0]);
+        .maybeSingle();
+      if (data) {
+        setPrefs(data);
       }
       setLoading(false);
     };

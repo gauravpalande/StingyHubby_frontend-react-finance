@@ -51,19 +51,19 @@ const GoalSettings = () => {
 
       const { data, error } = await supabase
         .from('goals')
-        .select('*')
+        .select('emergency, retirement, health')
         .eq('user_id', user.id)
-        .limit(1);
+        .maybeSingle();
 
       if (error) {
         console.error('Error loading goals:', error.message);
       }
-      if (data && data.length > 0) {
+      if (data) {
         setGoals(prev => ({
           ...prev,
-          emergency: Number(data[0].emergency) || 0,
-          retirement: Number(data[0].retirement) || 0,
-          health: Number(data[0].health) || 0,
+          emergency: Number(data.emergency) || 0,
+          retirement: Number(data.retirement) || 0,
+          health: Number(data.health) || 0,
         }));
       }
     };
@@ -80,16 +80,17 @@ const GoalSettings = () => {
         .select('emergency,retirement,health')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
-        .limit(1);
+        .limit(1)
+        .maybeSingle();
 
       if (error) {
         console.error('Error loading finance progress:', error.message);
       }
-      if (data && data.length > 0) {
+      if (data) {
         setProgress({
-          emergency: Number(data[0].emergency) || 0,
-          retirement: Number(data[0].retirement) || 0,
-          health: Number(data[0].health) || 0,
+          emergency: Number(data.emergency) || 0,
+          retirement: Number(data.retirement) || 0,
+          health: Number(data.health) || 0,
         });
       }
     };

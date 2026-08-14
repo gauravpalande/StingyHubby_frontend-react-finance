@@ -31,10 +31,10 @@ const FinanceForm: React.FC = () => {
     setSubmitted(false);
 
     const { data: goals } = await supabase
-  .from('goals')
-  .select('*')
-  .eq('user_id', user.id)
-  .single();
+      .from('goals')
+      .select('emergency, retirement, health')
+      .eq('user_id', user.id)
+      .maybeSingle();
 
     let suggestions;
     try {

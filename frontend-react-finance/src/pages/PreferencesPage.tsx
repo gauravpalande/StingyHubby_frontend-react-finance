@@ -45,9 +45,9 @@ const PreferencesPage: React.FC = () => {
       // Load preferences
       const { data, error } = await supabase
         .from('preferences')
-        .select('*')
+        .select('graph_type, show_suggestions, email_weekly_digest, email_monthly_digest')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       if (error && error.code !== 'PGRST116') {
         console.error('❌ Error loading preferences:', error.message);

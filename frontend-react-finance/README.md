@@ -39,6 +39,10 @@ supabase db push
 
 The migration adds indexes for finance history lookups, preference reads, digest recipient discovery, goal reads, and Stripe customer lookups.
 
+## Query optimization
+
+Client-side Supabase reads use explicit column projections for the finance, goals, and preferences screens. Single-record reads use `maybeSingle()` where missing rows are valid, which avoids one-row arrays and prevents "no row" responses from being treated as exceptional.
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:
