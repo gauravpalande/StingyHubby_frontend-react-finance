@@ -36,6 +36,11 @@ const readmeHighlights = [
       'Supabase and PostgreSQL are tuned with targeted indexes and optimized queries for finance history, preferences, goals, and reporting workflows.',
   },
   {
+    title: 'ETL CSV Import',
+    description:
+      'Paid users can import financial history through a lightweight CSV pipeline that extracts rows, validates values, transforms them, and loads them into Supabase.',
+  },
+  {
     title: 'Modern Web Stack',
     description:
       'The frontend is built with React, TypeScript, Vite, responsive UI patterns, and Vercel deployment for a fast web experience.',

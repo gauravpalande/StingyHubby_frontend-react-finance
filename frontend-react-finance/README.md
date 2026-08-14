@@ -43,6 +43,10 @@ The migration adds indexes for finance history lookups, preference reads, digest
 
 Client-side Supabase reads use explicit column projections for the finance, goals, and preferences screens. Single-record reads use `maybeSingle()` where missing rows are valid, which avoids one-row arrays and prevents "no row" responses from being treated as exceptional.
 
+## ETL CSV import
+
+Paid users can import financial history from CSV on the Financial History page. The client-side pipeline extracts CSV rows, transforms headers, dates, and numeric values into normalized finance records, validates malformed data, and loads valid rows into Supabase.
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:
