@@ -9,6 +9,7 @@ import AboutPage from "./pages/AboutPage";
 import UpdateFinancesPage from "./pages/UpdateFinancesPage";
 import FinanceBreakdownPage from "./pages/FinanceBreakdownPage";
 import GPTSuggestionPage from "./pages/GPTSuggestionPage";
+import FinancialDashboardPage from "./pages/FinancialDashboardPage";
 import EditableFinancialHistory from "./components/EditableFinancialHistory";
 import GoalSettings from "./components/GoalSettings";
 import PreferencesPage from "./pages/PreferencesPage";
@@ -54,6 +55,7 @@ const App: React.FC = () => {
           }
         >
           <Route index element={<FinanceForm />} />
+          <Route path="dashboard" element={<FinancialDashboardPage />} />
           <Route path="update" element={<UpdateFinancesPage />} />
           <Route path="goals" element={<GoalSettings />} />
           <Route path="history" element={<EditableFinancialHistory />} />

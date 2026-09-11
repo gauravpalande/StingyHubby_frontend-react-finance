@@ -41,6 +41,11 @@ const readmeHighlights = [
       'Paid users can import financial history through a lightweight CSV pipeline that extracts rows, validates values, transforms them, and loads them into Supabase.',
   },
   {
+    title: 'Reporting Dashboard',
+    description:
+      'The app summarizes financial health, cash-flow trends, savings buckets, goals, and AI suggestions into a single dashboard for automated tracking and advising.',
+  },
+  {
     title: 'Modern Web Stack',
     description:
       'The frontend is built with React, TypeScript, Vite, responsive UI patterns, and Vercel deployment for a fast web experience.',
@@ -178,7 +183,7 @@ const AboutContent: React.FC<{ onClose: () => void }> = ({ onClose }) => (
       <div style={cardStyle}>
         <p style={{ color: '#4a5568', marginTop: 0 }}>
           PennyWize combines personal finance tracking, AI-assisted suggestions, secure API access,
-          auditability, database performance work, and a modern React deployment stack.
+          auditability, database performance work, reporting dashboards, and a modern React deployment stack.
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
           {readmeHighlights.map((item) => (

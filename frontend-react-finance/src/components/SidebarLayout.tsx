@@ -5,6 +5,7 @@ import {
   FaHome,
   FaEdit,
   FaHistory,
+  FaChartLine,
   FaChartPie,
   FaRobot,
   FaInfoCircle,
@@ -21,6 +22,7 @@ interface SidebarLayoutProps {
 
 const navItems = [
   { to: '/', icon: <FaHome size={20} />, label: 'Home' },
+  { to: '/app/dashboard', icon: <FaChartLine size={20} />, label: 'Dashboard' },
   { to: '/app/update', icon: <FaEdit size={20} />, label: 'Update Finance' },
   { to: '/app/goals', icon: <FaBullseye size={20} />, label: 'Set Goals' },
   { to: '/app/history', icon: <FaHistory size={20} />, label: 'Financial History' },

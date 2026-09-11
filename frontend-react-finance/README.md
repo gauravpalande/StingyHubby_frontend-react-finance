@@ -47,6 +47,10 @@ Client-side Supabase reads use explicit column projections for the finance, goal
 
 Paid users can import financial history from CSV on the Financial History page. The client-side pipeline extracts CSV rows, transforms headers, dates, and numeric values into normalized finance records, validates malformed data, and loads valid rows into Supabase.
 
+## Reporting dashboard
+
+The app includes a Financial Dashboard that combines recent finance submissions, goals, expense totals, cash-flow trends, savings buckets, and the latest AI suggestion into a single reporting view. The dashboard helps users quickly understand their current financial health and highlights the next practical action based on their latest data.
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:
