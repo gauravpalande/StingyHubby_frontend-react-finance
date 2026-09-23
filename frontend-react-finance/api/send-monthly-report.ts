@@ -1,6 +1,6 @@
 // /api/send-monthly-digest.ts  (replace your existing monthly file)
 // - Embeds QuickChart PNG and AI suggestions into a PDF (pdfkit)
-// - Keeps CSV + PDF attachments for paid users
+// - Includes CSV + PDF attachments for every opted-in user
 // - Uses previous calendar month as the period
 
 export const config = {
@@ -77,14 +77,6 @@ function buildChartUrl(history: HistoryRow[]) {
   return u.toString();
 }
 
-// AI Suggestions text from your stored DB fields
-type User = {
-  paid_user: boolean;
-  name?: string;
-  email?: string;
-  // Add other relevant fields if needed
-};
-
 type Submission = {
   created_at: string;
   short_term_suggestion?: string;
@@ -94,27 +86,21 @@ type Submission = {
   // Add other relevant fields if needed
 };
 
-function buildAiSuggestionText(user: User, history: Submission[]): string {
+function buildAiSuggestionText(history: Submission[]): string {
   const latest = history[0];
-  if (user.paid_user) {
-    const st = latest?.short_term_suggestion?.trim();
-    const lt = latest?.long_term_suggestion?.trim();
-    const goal = latest?.goal_suggestion?.trim();
+  const shortTerm = latest?.short_term_suggestion?.trim() ||
+    'Consider reducing discretionary expenses next month to increase savings.';
+  const longTerm = latest?.long_term_suggestion?.trim() ||
+    'Consider contributing more towards your retirement savings.';
+  const goal = latest?.goal_suggestion?.trim() ||
+    'Consider contributing more towards your financial goals.';
 
-    const ST = st || 'Consider reducing discretionary expenses next month to increase savings.';
-    const LT = lt || 'Consider contributing more towards your retirement savings.';
-    const GO = goal || 'Consider contributing more towards your financial goals.';
-
-    return [
-      'AI Suggestions:',
-      `• Short term: ${ST}`,
-      `• Long term: ${LT}`,
-      `• Goal: ${GO}`,
-    ].join('\n');
-  } else {
-    const one = latest?.oneline_suggestion?.trim() || 'Keep tracking your finances to get personalized insights.';
-    return ['AI Suggestion:', `• ${one}`].join('\n');
-  }
+  return [
+    'AI Suggestions:',
+    `• Short term: ${shortTerm}`,
+    `• Long term: ${longTerm}`,
+    `• Goal: ${goal}`,
+  ].join('\n');
 }
 
 // CSV helper (unchanged logic)
@@ -226,10 +212,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const userIds = prefs.map((p) => p.user_id);
 
-    // Step 2: Fetch matching users including paid flag
+    // Step 2: Fetch matching users
     const { data: users, error: userError } = await supabase
       .from('users')
-      .select('id, email, name, paid_user')
+      .select('id, email, name')
       .in('id', userIds);
 
     if (userError || !users) {
@@ -287,7 +273,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       // AI Suggestions
-      const aiText = buildAiSuggestionText(user, history);
+      const aiText = buildAiSuggestionText(history);
 
       // Email HTML
       const displayName = user.name || user.email;
@@ -314,11 +300,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .reverse()
         .map((row) => new Date(row.created_at).toLocaleDateString());
 
-      // Build PDF with chart + AI tips (only for paid users; set to true to send to all)
-      const shouldAttachPdf = !!user.paid_user;
       let pdfBuffer: Buffer | undefined;
 
-      if (shouldAttachPdf) {
+      try {
         pdfBuffer = await buildDigestPdfBuffer({
           title: 'Monthly Financial Digest',
           displayName,
@@ -330,25 +314,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           aiText,
           dates: datesForPdf,
         });
+      } catch (error) {
+        console.error(`PDF generation failed for ${user.email}:`, (error as Error)?.message || error);
       }
 
-      // Attachments: CSV + PDF for paid users (your existing policy)
       const attachments: Array<{
         filename: string;
         content: string | Buffer;
         contentType?: string;
-      }> = [];
+      }> = [
+        { filename: 'history.csv', content: convertToCSV(history), contentType: 'text/csv' },
+      ];
 
-      if (user.paid_user) {
-        const csv = convertToCSV(history);
-        attachments.push({ filename: 'history.csv', content: csv });
-        if (pdfBuffer) {
-          attachments.push({
-            filename: 'digest.pdf',
-            content: pdfBuffer,
-            contentType: 'application/pdf',
-          });
-        }
+      if (pdfBuffer) {
+        attachments.push({
+          filename: 'digest.pdf',
+          content: pdfBuffer,
+          contentType: 'application/pdf',
+        });
       }
 
       try {

@@ -56,7 +56,6 @@ const EditableFinancialHistory: React.FC = () => {
   const [editing, setEditing] = useState<EditingState>({});
   const [loading, setLoading] = useState(true);
   const [chartType, setChartType] = useState<'line' | 'bar'>('line');
-  const [isPaid, setIsPaid] = useState<boolean>(false);
   const [importStatus, setImportStatus] = useState('');
   const printRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -65,7 +64,7 @@ const EditableFinancialHistory: React.FC = () => {
     if (!user) return;
     setLoading(true);
 
-    const [historyRes, prefsRes, paidRes] = await Promise.all([
+    const [historyRes, prefsRes] = await Promise.all([
       supabase
         .from('submissions')
         .select(
@@ -77,11 +76,6 @@ const EditableFinancialHistory: React.FC = () => {
         .from('preferences')
         .select('graph_type')
         .eq('user_id', user.id)
-        .single(),
-      supabase
-        .from('users')
-        .select('paid_user')
-        .eq('id', user.id)
         .single(),
     ]);
 
@@ -97,7 +91,6 @@ const EditableFinancialHistory: React.FC = () => {
     if (prefsRes.data?.graph_type === 'bar') setChartType('bar');
     else setChartType('line');
 
-    setIsPaid(!!paidRes.data?.paid_user);
     setLoading(false);
   };
 
@@ -107,8 +100,6 @@ const EditableFinancialHistory: React.FC = () => {
   }, [user]);
 
   const updateRow = (id: string, field: ImportNumericField, value: string) => {
-    // Even if free users change inputs (should be disabled), guard anyway
-    if (!isPaid) return;
     setEditing((prev) => ({
       ...prev,
       [id]: { ...prev[id], [field]: parseFloat(value) },
@@ -116,7 +107,6 @@ const EditableFinancialHistory: React.FC = () => {
   };
 
   const saveRow = async (id: string) => {
-    if (!isPaid) return;
     const changes = editing[id];
     if (!changes) return;
 
@@ -133,14 +123,13 @@ const EditableFinancialHistory: React.FC = () => {
   };
 
   const deleteRow = async (id: string) => {
-    if (!isPaid) return;
     const { error } = await supabase.from('submissions').delete().eq('id', id);
     if (!error) fetchHistory();
     else console.error('Error deleting row:', error.message);
   };
 
   const exportToCSV = () => {
-    if (!isPaid || !history.length) return;
+    if (!history.length) return;
 
     const headers = ['Date', 'Income', 'Checking', 'Emergency', 'Health', 'Retirement', 'Credit Cards', 'Mortgage', 'Car Payments', 'Utilities'];
     const rows = history.map((row) =>
@@ -173,7 +162,7 @@ const EditableFinancialHistory: React.FC = () => {
     const file = event.target.files?.[0];
     event.target.value = '';
 
-    if (!file || !user || !isPaid) return;
+    if (!file || !user) return;
 
     try {
       setImportStatus('Importing CSV...');
@@ -199,7 +188,7 @@ const EditableFinancialHistory: React.FC = () => {
   };
 
   const exportToPDF = () => {
-    if (!isPaid || !printRef.current) return;
+    if (!printRef.current) return;
     const originalContent = document.body.innerHTML;
     const printContent = printRef.current.innerHTML;
 
@@ -213,26 +202,19 @@ const EditableFinancialHistory: React.FC = () => {
     <div style={{ marginTop: 40 }} ref={printRef}>
       <h3>Financial History</h3>
 
-      {/* Premium Export Buttons */}
-      {isPaid ? (
-        <div style={{ marginBottom: 16 }}>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".csv,text/csv"
-            onChange={importFromCSV}
-            style={{ display: 'none' }}
-          />
-          <button onClick={exportToCSV}>📁 Export CSV</button>
-          <button onClick={exportToPDF} style={{ marginLeft: 10 }}>🖨 Export PDF</button>
-          <button onClick={() => fileInputRef.current?.click()} style={{ marginLeft: 10 }}>Import CSV</button>
-          {importStatus && <div style={{ marginTop: 8, color: '#4a5568' }}>{importStatus}</div>}
-        </div>
-      ) : (
-        <div style={{ marginBottom: 16, fontSize: 14, color: '#6c757d' }}>
-          🔒 <strong>Premium:</strong> Import CSV and export CSV/PDF are available for paid users.
-        </div>
-      )}
+      <div style={{ marginBottom: 16 }}>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".csv,text/csv"
+          onChange={importFromCSV}
+          style={{ display: 'none' }}
+        />
+        <button onClick={exportToCSV}>📁 Export CSV</button>
+        <button onClick={exportToPDF} style={{ marginLeft: 10 }}>🖨 Export PDF</button>
+        <button onClick={() => fileInputRef.current?.click()} style={{ marginLeft: 10 }}>Import CSV</button>
+        {importStatus && <div style={{ marginTop: 8, color: '#4a5568' }}>{importStatus}</div>}
+      </div>
 
       {loading ? (
         <p>📊 Loading chart data...</p>
@@ -287,20 +269,12 @@ const EditableFinancialHistory: React.FC = () => {
                       type="number"
                       value={(editing[row.id]?.[key] ?? row[key]) || 0}
                       onChange={(e) => updateRow(row.id, key, e.target.value)}
-                      disabled={!isPaid}
-                      style={!isPaid ? { backgroundColor: '#f1f3f5', cursor: 'not-allowed' } : undefined}
                     />
                   </td>
                 ))}
                 <td>
-                  {isPaid ? (
-                    <>
-                      <button onClick={() => saveRow(row.id)} title="Save changes">💾</button>
-                      <button onClick={() => deleteRow(row.id)} title="Delete entry" style={{ marginLeft: 8 }}>🗑️</button>
-                    </>
-                  ) : (
-                    <span style={{ color: '#6c757d' }}>🔒 Premium</span>
-                  )}
+                  <button onClick={() => saveRow(row.id)} title="Save changes">💾</button>
+                  <button onClick={() => deleteRow(row.id)} title="Delete entry" style={{ marginLeft: 8 }}>🗑️</button>
                 </td>
               </tr>
             ))}

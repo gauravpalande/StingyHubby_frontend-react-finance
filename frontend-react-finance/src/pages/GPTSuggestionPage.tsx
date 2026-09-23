@@ -7,7 +7,6 @@ const GPTSuggestionPage = () => {
   const [longTermSuggestion, setLongTermSuggestion] = useState('');
   const [goalsSuggestion, setGoalsSuggestion] = useState('');
   const [oneLineSuggestion, setOneLineSuggestion] = useState('');
-  const [isPaid, setIsPaid] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -49,20 +48,7 @@ const GPTSuggestionPage = () => {
       setLongTermSuggestion(longS);
       setGoalsSuggestion(goalS);
 
-      // 2) Fetch paid flag
-      const { data: paidRow, error: paidErr } = await supabase
-        .from('users')
-        .select('paid_user')
-        .eq('id', user.id)
-        .single();
-
-      if (paidErr) console.error('Paid flag fetch error:', paidErr.message);
-
-      const paid = !!paidRow?.paid_user;
-      setIsPaid(paid);
-
-      // 3) For free users, prefer the dedicated one-line suggestion from DB.
-      //    Fallback to a collapsed version of other fields if it's empty.
+      // Use the one-line suggestion only when detailed suggestions are unavailable.
       const fallbackCollapsed = (shortS || longS || goalS || 'No suggestions found.')
         .replace(/\s+/g, ' ')
         .trim();
@@ -75,19 +61,22 @@ const GPTSuggestionPage = () => {
     fetchLatestSuggestion();
   }, []);
 
+  const hasDetailedSuggestions = Boolean(
+    shortTermSuggestion || longTermSuggestion || goalsSuggestion
+  );
+
   return (
     <div>
       <h2>GPT Suggestions</h2>
       {loading ? (
         <p>Loading...</p>
-      ) : isPaid ? (
+      ) : (
         <GPTSuggestions
           short_term_suggestion={shortTermSuggestion}
           long_term_suggestion={longTermSuggestion}
           goal_suggestion={goalsSuggestion}
+          oneline_suggestion={hasDetailedSuggestions ? undefined : oneLineSuggestion}
         />
-      ) : (
-        <GPTSuggestions oneline_suggestion={oneLineSuggestion} />
       )}
     </div>
   );

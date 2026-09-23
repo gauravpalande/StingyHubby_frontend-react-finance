@@ -19,31 +19,6 @@ const GoalSettings = () => {
     health: 0,
   });
 
-  const [isPaidUser, setIsPaidUser] = useState<boolean | null>(null);
-  const [loadingPaid, setLoadingPaid] = useState(true);
-
-  // 🔐 Load paid_user flag
-  useEffect(() => {
-    const loadPaidFlag = async () => {
-      if (!user) return;
-      setLoadingPaid(true);
-      const { data, error } = await supabase
-        .from('users')
-        .select('paid_user')
-        .eq('id', user.id)
-        .single();
-
-      if (error) {
-        console.error('Error loading paid_user:', error.message);
-        setIsPaidUser(false);
-      } else {
-        setIsPaidUser(!!data?.paid_user);
-      }
-      setLoadingPaid(false);
-    };
-    loadPaidFlag();
-  }, [user, supabase]);
-
   // 🎯 Load goals from DB
   useEffect(() => {
     const loadGoals = async () => {
@@ -147,63 +122,41 @@ const GoalSettings = () => {
         Save Goals
       </button>
 
-      {/* 🟡 Paid-only section */}
       <div style={{ marginTop: 32 }}>
         <h3>Goal Progress</h3>
-
-        {loadingPaid ? (
-          <div style={{ color: '#666', fontSize: 14 }}>Checking your plan…</div>
-        ) : isPaidUser ? (
-          <>
-            {GOAL_FIELDS.map((field) => {
-              const percent = getProgressPercent(field);
-              return (
-                <div key={field} style={{ marginBottom: 20 }}>
-                  <div style={{ marginBottom: 4 }}>
-                    <strong>{field.charAt(0).toUpperCase() + field.slice(1)}:</strong>{' '}
-                    ${progress[field] || 0} / ${goals[field] || 0}
-                  </div>
-                  <div
-                    style={{
-                      background: '#eee',
-                      borderRadius: 8,
-                      height: 20,
-                      width: '100%',
-                      overflow: 'hidden',
-                      boxShadow: 'inset 0 1px 2px #ccc',
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: `${percent}%`,
-                        background: percent === 100 ? '#4caf50' : '#2196f3',
-                        height: '100%',
-                        transition: 'width 0.5s',
-                      }}
-                    />
-                  </div>
-                  <div style={{ fontSize: 12, color: '#555', marginTop: 2 }}>
-                    {percent}%
-                  </div>
-                </div>
-              );
-            })}
-          </>
-        ) : (
-          <div
-            style={{
-              background: '#fff8e1',
-              border: '1px solid #ffe082',
-              borderRadius: 8,
-              padding: 12,
-              color: '#6d4c41',
-              fontSize: 14,
-            }}
-          >
-            Goal progress is a premium feature. Upgrade to a paid plan to track your
-            progress toward each goal over time.
-          </div>
-        )}
+        {GOAL_FIELDS.map((field) => {
+          const percent = getProgressPercent(field);
+          return (
+            <div key={field} style={{ marginBottom: 20 }}>
+              <div style={{ marginBottom: 4 }}>
+                <strong>{field.charAt(0).toUpperCase() + field.slice(1)}:</strong>{' '}
+                ${progress[field] || 0} / ${goals[field] || 0}
+              </div>
+              <div
+                style={{
+                  background: '#eee',
+                  borderRadius: 8,
+                  height: 20,
+                  width: '100%',
+                  overflow: 'hidden',
+                  boxShadow: 'inset 0 1px 2px #ccc',
+                }}
+              >
+                <div
+                  style={{
+                    width: `${percent}%`,
+                    background: percent === 100 ? '#4caf50' : '#2196f3',
+                    height: '100%',
+                    transition: 'width 0.5s',
+                  }}
+                />
+              </div>
+              <div style={{ fontSize: 12, color: '#555', marginTop: 2 }}>
+                {percent}%
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

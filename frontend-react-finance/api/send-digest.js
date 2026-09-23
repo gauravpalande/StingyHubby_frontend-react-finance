@@ -45,30 +45,23 @@ function buildChartUrl(history) {
   return u.toString();
 }
 
-function buildAiSuggestionText(user, history) {
+function buildAiSuggestionText(history) {
   const latest = history[0];
-  if (user.paid_user) {
-    const st =
-      (latest?.short_term_suggestion || "").trim() ||
-      "Consider reducing discretionary expenses next month to increase savings.";
-    const lt =
-      (latest?.long_term_suggestion || "").trim() ||
-      "Consider contributing more towards your retirement savings.";
-    const goal =
-      (latest?.goal_suggestion || "").trim() ||
-      "Consider contributing more towards your financial goals.";
-    return [
-      "AI Suggestions:",
-      `• Short term: ${st}`,
-      `• Long term: ${lt}`,
-      `• Goal: ${goal}`,
-    ].join("\n");
-  } else {
-    const one =
-      (latest?.oneline_suggestion || "").trim() ||
-      "Keep tracking your finances to get personalized insights.";
-    return ["AI Suggestion:", `• ${one}`].join("\n");
-  }
+  const shortTerm =
+    (latest?.short_term_suggestion || "").trim() ||
+    "Consider reducing discretionary expenses next month to increase savings.";
+  const longTerm =
+    (latest?.long_term_suggestion || "").trim() ||
+    "Consider contributing more towards your retirement savings.";
+  const goal =
+    (latest?.goal_suggestion || "").trim() ||
+    "Consider contributing more towards your financial goals.";
+  return [
+    "AI Suggestions:",
+    `• Short term: ${shortTerm}`,
+    `• Long term: ${longTerm}`,
+    `• Goal: ${goal}`,
+  ].join("\n");
 }
 
 /* -------------------- PDF rendering (overlap-safe) -------------------- */
@@ -282,7 +275,7 @@ export default async function handler(req, res) {
 
     const { data: users, error: userError } = await supabase
       .from("users")
-      .select("id, email, name, paid_user")
+      .select("id, email, name")
       .in(
         "id",
         prefs.map((p) => p.user_id)
@@ -356,7 +349,7 @@ export default async function handler(req, res) {
         chartBuffer = undefined;
       }
 
-      const aiText = buildAiSuggestionText(user, history);
+      const aiText = buildAiSuggestionText(history);
       const displayName = user.name || user.email;
 
       // ✅ Manage preferences still uses magic link
@@ -395,38 +388,36 @@ export default async function handler(req, res) {
       });
 
       const attachments = [];
-      if (user.paid_user) {
-        attachments.push({
-          filename: "history.csv",
-          content: convertToCSV(history),
-          contentType: "text/csv",
-        });
+      attachments.push({
+        filename: "history.csv",
+        content: convertToCSV(history),
+        contentType: "text/csv",
+      });
 
-        const recentDates = history
-          .slice()
-          .reverse()
-          .map((row) =>
-            new Date(row.created_at).toLocaleDateString()
-          );
-        try {
-          const pdfBuffer = await buildDigestPdfBuffer({
-            title: "Weekly Financial Digest",
-            displayName,
-            totalIncome,
-            totalExpenses,
-            savings,
-            chartPng: chartBuffer,
-            aiText,
-            recentDates,
+      const recentDates = history
+        .slice()
+        .reverse()
+        .map((row) =>
+          new Date(row.created_at).toLocaleDateString()
+        );
+      try {
+        const pdfBuffer = await buildDigestPdfBuffer({
+          title: "Weekly Financial Digest",
+          displayName,
+          totalIncome,
+          totalExpenses,
+          savings,
+          chartPng: chartBuffer,
+          aiText,
+          recentDates,
+        });
+        if (pdfBuffer)
+          attachments.push({
+            filename: "digest.pdf",
+            content: pdfBuffer,
+            contentType: "application/pdf",
           });
-          if (pdfBuffer)
-            attachments.push({
-              filename: "digest.pdf",
-              content: pdfBuffer,
-              contentType: "application/pdf",
-            });
-        } catch {}
-      }
+      } catch {}
       if (logoAttachment) attachments.push(logoAttachment);
 
       await resend.emails.send({

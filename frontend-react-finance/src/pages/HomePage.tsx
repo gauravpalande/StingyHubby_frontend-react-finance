@@ -171,32 +171,23 @@ const HomePage: React.FC = () => {
         }}
       >
         <section>
-          <h2 style={{ marginBottom: "0.75rem" }}>Free Features</h2>
+          <h2 style={{ marginBottom: "0.75rem" }}>All Features Are Free</h2>
           <ul style={{ fontSize: "1rem", lineHeight: "1.8", paddingLeft: 16 }}>
             <li>🔐 Secure Google login</li>
             <li>📥 Update finances</li>
             <li>📈 View financial trends graph</li>
             <li>📅 View past financial entries</li>
             <li>📊 Visualize income & expenses</li>
-            <li>💡 AI-powered one line financial suggestion</li>
+            <li>💡 Detailed short-term, long-term, and goal-based AI suggestions</li>
             <li>🎯 Set/View savings goals</li>
-            <li>📬 Digest emails (weekly)</li>
+            <li>📊 View progress against savings goals</li>
+            <li>📤 Import and export financial history as CSV or PDF</li>
+            <li>🧾 Edit or delete past financial entries</li>
+            <li>📬 Weekly and monthly digest emails</li>
+            <li>📎 Financial history attachments in digest emails</li>
             <li>🎨 Customize your Finance history view</li>
             <li>📤 Subscribe/unsubscribe from email digest</li>
-          </ul>
-        </section>
-
-        <section>
-          <h2 style={{ marginBottom: "0.75rem" }}>Paid Features</h2>
-          <ul style={{ fontSize: "1rem", lineHeight: "1.8", paddingLeft: 16 }}>
-            <li>All free features listed above and....</li>
-            <li>📊 View progress against savings goals</li>
-            <li>📤 Export financial history as CSV or PDF</li>
-            <li>🧾 Edit/delete past financial entries</li>
-            <li>💡 AI-powered Short-Term, Long-Term and Goals financial suggestion</li>
-            <li>📬 Digest emails (monthly)</li>
-            <li>👨‍💻 Priority support</li>
-            <li>📎 Financial history submissions attached to newsletters</li>
+            <li>👨‍💻 Submit feedback and bug reports</li>
           </ul>
         </section>
       </div>

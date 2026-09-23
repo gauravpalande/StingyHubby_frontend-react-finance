@@ -21,6 +21,12 @@ The `/api/generate-suggestions` endpoint requires a Supabase access token before
 - Backend: `api/generate-suggestions.ts` validates the token with Supabase Auth.
 - Required Vercel environment variables: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `OPENAI_API_KEY`.
 
+## Free feature access
+
+All PennyWize features are available to every authenticated user without a paid subscription. This includes detailed AI suggestions, goal progress, financial-history editing, CSV import/export, PDF export, feedback, monthly reports, and CSV/PDF digest attachments.
+
+New Stripe checkout sessions are disabled. The billing portal remains available to users with an existing active subscription so they can review or cancel it.
+
 ## Audit logging
 
 The `/api/generate-suggestions` endpoint writes structured audit events to Vercel function logs. These logs include request IDs, user IDs, status codes, durations, validation failures, authentication failures, OpenAI model fallback events, and successful suggestion generation.
@@ -45,7 +51,7 @@ Client-side Supabase reads use explicit column projections for the finance, goal
 
 ## ETL CSV import
 
-Paid users can import financial history from CSV on the Financial History page. The client-side pipeline extracts CSV rows, transforms headers, dates, and numeric values into normalized finance records, validates malformed data, and loads valid rows into Supabase.
+All authenticated users can import financial history from CSV on the Financial History page. The client-side pipeline extracts CSV rows, transforms headers, dates, and numeric values into normalized finance records, validates malformed data, and loads valid rows into Supabase.
 
 ## Reporting dashboard
 

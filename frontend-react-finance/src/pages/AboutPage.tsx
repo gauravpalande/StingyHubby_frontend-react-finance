@@ -16,6 +16,11 @@ const readmeHighlights = [
       'PennyWize tracks income, expenses, savings goals, and financial history so users can understand their money in one place.',
   },
   {
+    title: 'Free Feature Access',
+    description:
+      'Every signed-in user can use detailed AI suggestions, goal progress, history editing, data import and export, reports, and feedback without a paid subscription.',
+  },
+  {
     title: 'AI Suggestions',
     description:
       'The app uses OpenAI-powered suggestions with a cost-conscious model strategy for short-term, long-term, goal-based, and concise financial guidance.',
@@ -38,7 +43,7 @@ const readmeHighlights = [
   {
     title: 'ETL CSV Import',
     description:
-      'Paid users can import financial history through a lightweight CSV pipeline that extracts rows, validates values, transforms them, and loads them into Supabase.',
+      'Authenticated users can import financial history through a lightweight CSV pipeline that extracts rows, validates values, transforms them, and loads them into Supabase.',
   },
   {
     title: 'Reporting Dashboard',
@@ -182,7 +187,7 @@ const AboutContent: React.FC<{ onClose: () => void }> = ({ onClose }) => (
       <h2 style={{ color: '#2b6cb0', fontSize: 22, marginBottom: 8 }}>Application Overview</h2>
       <div style={cardStyle}>
         <p style={{ color: '#4a5568', marginTop: 0 }}>
-          PennyWize combines personal finance tracking, AI-assisted suggestions, secure API access,
+          PennyWize combines free personal finance tracking, AI-assisted suggestions, secure API access,
           auditability, database performance work, reporting dashboards, and a modern React deployment stack.
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>

@@ -4,7 +4,7 @@ interface Props {
   short_term_suggestion?: string;
   long_term_suggestion?: string;
   goal_suggestion?: string;
-  oneline_suggestion?: string; // used for free users
+  oneline_suggestion?: string;
 }
 
 const GPTSuggestions: React.FC<Props> = ({
@@ -33,14 +33,14 @@ const GPTSuggestions: React.FC<Props> = ({
     >
       <h4>💡 GPT Suggestions</h4>
 
-      {/* One-line suggestion (shown for free users) */}
+      {/* One-line fallback when detailed suggestions are unavailable */}
       {oneline_suggestion && (
         <div style={{ marginTop: 8 }}>
           <p style={{ margin: 0 }}>{oneline_suggestion}</p>
         </div>
       )}
 
-      {/* Detailed suggestions (shown for paid users) */}
+      {/* Detailed suggestions */}
       {short_term_suggestion && (
         <div style={{ marginTop: 16 }}>
           <h5 style={{ margin: '8px 0' }}>📆 Short-Term</h5>
