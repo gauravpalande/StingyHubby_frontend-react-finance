@@ -9,7 +9,6 @@ import {
   FaChartPie,
   FaRobot,
   FaInfoCircle,
-  FaBullseye,
   FaCog,
   FaBug,
 } from 'react-icons/fa';
@@ -24,7 +23,6 @@ const navItems = [
   { to: '/', icon: <FaHome size={20} />, label: 'Home' },
   { to: '/app/dashboard', icon: <FaChartLine size={20} />, label: 'Dashboard' },
   { to: '/app/update', icon: <FaEdit size={20} />, label: 'Update Finance' },
-  { to: '/app/goals', icon: <FaBullseye size={20} />, label: 'Set Goals' },
   { to: '/app/history', icon: <FaHistory size={20} />, label: 'Financial History' },
   { to: '/app/breakdown', icon: <FaChartPie size={20} />, label: 'Expense Breakdown' },
   { to: '/app/suggestions', icon: <FaRobot size={20} />, label: 'GPT Suggestions' },

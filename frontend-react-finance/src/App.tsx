@@ -11,7 +11,6 @@ import FinanceBreakdownPage from "./pages/FinanceBreakdownPage";
 import GPTSuggestionPage from "./pages/GPTSuggestionPage";
 import FinancialDashboardPage from "./pages/FinancialDashboardPage";
 import EditableFinancialHistory from "./components/EditableFinancialHistory";
-import GoalSettings from "./components/GoalSettings";
 import PreferencesPage from "./pages/PreferencesPage";
 import FeedbackForm from "./components/FeedbackForm";
 import AuthCallback from "./pages/AuthCallback";
@@ -57,7 +56,6 @@ const App: React.FC = () => {
           <Route index element={<FinanceForm />} />
           <Route path="dashboard" element={<FinancialDashboardPage />} />
           <Route path="update" element={<UpdateFinancesPage />} />
-          <Route path="goals" element={<GoalSettings />} />
           <Route path="history" element={<EditableFinancialHistory />} />
           <Route path="breakdown" element={<FinanceBreakdownPage />} />
           <Route path="suggestions" element={<GPTSuggestionPage />} />
