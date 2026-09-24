@@ -95,12 +95,19 @@ const FinanceForm: React.FC = () => {
             </label>
             <div>
               <input
-  id={field}
-  type="number"
-  step="any" // ✅ allow decimals
-  {...register(field as keyof FormData, { required: true, valueAsNumber: true })} 
-  disabled={isSubmitting}
-/>
+                id={field}
+                type="number"
+                step="any"
+                min={-1_000_000_000_000}
+                max={1_000_000_000_000}
+                {...register(field as keyof FormData, {
+                  required: true,
+                  valueAsNumber: true,
+                  min: -1_000_000_000_000,
+                  max: 1_000_000_000_000,
+                })}
+                disabled={isSubmitting}
+              />
               {errors[field as keyof FormData] && (
                 <span style={{ color: 'red', marginLeft: 8 }}>Required</span>
               )}

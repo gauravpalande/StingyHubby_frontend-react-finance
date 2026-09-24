@@ -21,6 +21,25 @@ The `/api/generate-suggestions` endpoint requires a Supabase access token before
 - Backend: `api/generate-suggestions.ts` validates the token with Supabase Auth.
 - Required Vercel environment variables: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `OPENAI_API_KEY`.
 
+## Cost-abuse protection
+
+Paid and resource-intensive operations are protected on the server and in PostgreSQL rather than relying on hidden or disabled browser controls.
+
+- OpenAI suggestion requests require a valid Supabase session, strict numeric financial data, an `application/json` body no larger than 10 KB, and database-backed limits. Defaults are 5 requests per user per hour, 20 per user per day, 50 per IP fingerprint per day, and 200 total requests per day.
+- OpenAI output is capped at 500 tokens. Automatic SDK retries are disabled so one application request cannot silently multiply into several paid requests.
+- Weekly and monthly digest routes require Vercel's `Authorization: Bearer <CRON_SECRET>` header. Per-user delivery claims and Resend idempotency keys prevent duplicate cron invocations from sending duplicate paid emails. Each run processes at most 100 recipients by default.
+- Stripe billing-portal requests require a valid Supabase access token, use the authenticated user's Stripe customer, and are rate-limited.
+- CSV imports are limited to 1 MB and 250 rows in the browser. PostgreSQL independently limits authenticated users to 500 new finance records and 20 feedback records per day, validates ownership, and rejects oversized values or text.
+- History screens fetch at most 1,000 records, monthly reports process at most 100 records per user, and external chart requests time out after 8 seconds.
+
+Apply `supabase/migrations/20260923000000_add_cost_abuse_protection.sql` before deploying these API changes:
+
+```bash
+npx supabase db push
+```
+
+Add a random `CRON_SECRET` of at least 16 characters to the Vercel Production environment before deploying. Vercel automatically sends it to configured cron routes. The OpenAI limits can optionally be adjusted with `OPENAI_USER_HOURLY_LIMIT`, `OPENAI_USER_DAILY_LIMIT`, `OPENAI_IP_DAILY_LIMIT`, and `OPENAI_GLOBAL_DAILY_LIMIT`. `DIGEST_RECIPIENT_LIMIT` can adjust the per-run email cap from 1 to 1,000; its safe default is 100.
+
 ## Free feature access
 
 All PennyWize features are available to every authenticated user without a paid subscription. This includes detailed AI suggestions, goal progress, financial-history editing, CSV import/export, PDF export, feedback, monthly reports, and CSV/PDF digest attachments.
@@ -29,7 +48,7 @@ New Stripe checkout sessions are disabled. The billing portal remains available 
 
 ## Audit logging
 
-The `/api/generate-suggestions` endpoint writes structured audit events to Vercel function logs. These logs include request IDs, user IDs, status codes, durations, validation failures, authentication failures, OpenAI model fallback events, and successful suggestion generation.
+The `/api/generate-suggestions` endpoint writes structured audit events to Vercel function logs for bounded, meaningful events such as validation failures, model fallback, server failures, and successful suggestion generation. Expected authentication and rate-limit rejections are not logged individually so an attacker cannot create an unbounded log-ingestion bill.
 
 Financial input values are not written to audit logs.
 

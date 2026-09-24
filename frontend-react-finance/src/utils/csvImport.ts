@@ -1,5 +1,3 @@
-
-
 type ImportNumericField =
   | 'income'
   | 'checking'
@@ -30,6 +28,9 @@ const IMPORT_HEADER_TO_FIELD: Record<string, ImportNumericField | 'created_at'> 
 };
 
 const REQUIRED_IMPORT_HEADERS = Object.keys(IMPORT_HEADER_TO_FIELD);
+export const MAX_IMPORT_FILE_BYTES = 1_000_000;
+export const MAX_IMPORT_ROWS = 250;
+const MAX_FINANCIAL_AMOUNT = 1_000_000_000_000;
 
 function parseCsvLine(line: string) {
   const values: string[] = [];
@@ -69,6 +70,10 @@ function parseImportAmount(value: string, rowNumber: number, field: string) {
     throw new Error(`Row ${rowNumber}: ${field} must be a valid number.`);
   }
 
+  if (Math.abs(amount) > MAX_FINANCIAL_AMOUNT) {
+    throw new Error(`Row ${rowNumber}: ${field} is outside the supported range.`);
+  }
+
   return amount;
 }
 
@@ -82,12 +87,16 @@ function parseImportDate(value: string, rowNumber: number) {
   return date.toISOString();
 }
 
-function buildImportedSubmissions(csv: string, userId: string) {
+export function buildImportedSubmissions(csv: string, userId: string) {
   const lines = csv.split(/\r?\n/).filter((line) => line.trim());
   const headerLine = lines[0];
 
   if (!headerLine) {
     throw new Error('CSV file is empty.');
+  }
+
+  if (lines.length - 1 > MAX_IMPORT_ROWS) {
+    throw new Error(`CSV files can contain at most ${MAX_IMPORT_ROWS} data rows.`);
   }
 
   const fieldsByIndex = parseCsvLine(headerLine).map(

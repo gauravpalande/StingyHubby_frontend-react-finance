@@ -2,30 +2,62 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
+import type { Readable } from 'node:stream';
 
 export const config = { api: { bodyParser: false } }; // raw body needed
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2025-08-27.basil' });
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+const MAX_WEBHOOK_BYTES = 1_000_000;
 
-async function buffer(readable: any) {
+async function buffer(readable: Readable) {
   const chunks: Uint8Array[] = [];
-  for await (const chunk of readable) chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+  let totalBytes = 0;
+
+  for await (const chunk of readable) {
+    const bytes = typeof chunk === 'string' ? Buffer.from(chunk) : Buffer.from(chunk);
+    totalBytes += bytes.length;
+    if (totalBytes > MAX_WEBHOOK_BYTES) throw new Error('Webhook payload is too large');
+    chunks.push(bytes);
+  }
+
   return Buffer.concat(chunks);
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
+function getCurrentPeriodEnd(subscription: Stripe.Subscription) {
+  const value = (subscription as Stripe.Subscription & { current_period_end?: number })
+    .current_period_end;
+  return typeof value === 'number' ? new Date(value * 1000).toISOString() : null;
+}
 
-  const sig = req.headers['stripe-signature']!;
-  const buf = await buffer(req);
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', 'POST');
+    return res.status(405).send('Method Not Allowed');
+  }
+
+  const signatureHeader = req.headers['stripe-signature'];
+  const signature = Array.isArray(signatureHeader) ? signatureHeader[0] : signatureHeader;
+  if (!signature) return res.status(400).send('Missing Stripe signature');
+
+  const contentLengthHeader = req.headers['content-length'];
+  const contentLength = Number(Array.isArray(contentLengthHeader) ? contentLengthHeader[0] : contentLengthHeader);
+  if (Number.isFinite(contentLength) && contentLength > MAX_WEBHOOK_BYTES) {
+    return res.status(413).send('Webhook payload is too large');
+  }
+
+  let payload: Buffer;
+  try {
+    payload = await buffer(req);
+  } catch {
+    return res.status(413).send('Webhook payload is too large');
+  }
 
   let event: Stripe.Event;
   try {
-    event = stripe.webhooks.constructEvent(buf, sig, process.env.STRIPE_WEBHOOK_SECRET!);
-  } catch (err: any) {
-    console.error('Webhook signature verification failed.', err.message);
-    return res.status(400).send(`Webhook Error: ${err.message}`);
+    event = stripe.webhooks.constructEvent(payload, signature, process.env.STRIPE_WEBHOOK_SECRET!);
+  } catch {
+    return res.status(400).send('Webhook signature verification failed');
   }
 
   try {
@@ -44,9 +76,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             stripe_customer_id: custId,
             stripe_price_id: subscription.items.data[0]?.price.id ?? null,
             stripe_status: subscription.status,
-            current_period_end: subscription && 'current_period_end' in subscription
-              ? new Date((subscription as any).current_period_end * 1000).toISOString()
-              : null,
+            current_period_end: getCurrentPeriodEnd(subscription),
             paid_user: ['active', 'trialing', 'past_due'].includes(subscription.status), // keep bool in sync
           }).eq('id', userId);
         }
@@ -65,9 +95,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             stripe_subscription_id: sub.id,
             stripe_price_id: sub.items.data[0]?.price.id ?? null,
             stripe_status: sub.status,
-            current_period_end: 'current_period_end' in sub
-              ? new Date((sub as any).current_period_end * 1000).toISOString()
-              : null,
+            current_period_end: getCurrentPeriodEnd(sub),
             paid_user: ['active', 'trialing', 'past_due'].includes(sub.status),
           }).eq('id', userId);
         }
@@ -79,8 +107,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     return res.json({ received: true });
-  } catch (e: any) {
-    console.error('Webhook handling error', e.message);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown webhook error';
+    console.error('Webhook handling error', message);
     return res.status(500).json({ error: 'Webhook failed' });
   }
 }

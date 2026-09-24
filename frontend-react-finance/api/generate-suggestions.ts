@@ -1,14 +1,42 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
+import { z } from 'zod';
+import {
+  enforceRateLimits,
+  getClientFingerprint,
+  RateLimitExceededError,
+  RateLimitUnavailableError,
+  type RateLimitRule,
+} from './_lib/rateLimit';
 
-type SuggestionValue = number | string | null | undefined;
-type FinancialInput = Record<string, SuggestionValue>;
+const MAX_FINANCIAL_AMOUNT = 1_000_000_000_000;
+const MAX_REQUEST_BYTES = 10_000;
 
-type SuggestionRequest = {
-  latest?: FinancialInput;
-  goals?: FinancialInput | null;
-};
+const amountSchema = z.number().finite().min(-MAX_FINANCIAL_AMOUNT).max(MAX_FINANCIAL_AMOUNT);
+const financialInputSchema = z.object({
+  income: amountSchema,
+  checking: amountSchema,
+  emergency: amountSchema,
+  health: amountSchema,
+  retirement: amountSchema,
+  creditCards: amountSchema,
+  mortgage: amountSchema,
+  carPayments: amountSchema,
+  utilities: amountSchema,
+}).strict();
+const goalsInputSchema = z.object({
+  emergency: amountSchema,
+  retirement: amountSchema,
+  health: amountSchema,
+}).strict();
+const suggestionRequestSchema = z.object({
+  latest: financialInputSchema,
+  goals: goalsInputSchema.nullish(),
+}).strict();
+
+type FinancialInput = z.infer<typeof financialInputSchema>;
+type GoalsInput = z.infer<typeof goalsInputSchema>;
 
 type SuggestionKey =
   | 'short_term_suggestion'
@@ -19,9 +47,6 @@ type SuggestionKey =
 type FinancialSuggestions = Record<SuggestionKey, string>;
 
 type AuditEvent =
-  | 'suggestions.request_received'
-  | 'suggestions.auth_failed'
-  | 'suggestions.auth_succeeded'
   | 'suggestions.validation_failed'
   | 'suggestions.model_fallback'
   | 'suggestions.generated'
@@ -39,7 +64,7 @@ class ApiError extends Error {
 }
 
 const OPENAI_SUGGESTION_MODELS = ['gpt-5.6-luna', 'gpt-4.1-nano'] as const;
-const MAX_SUGGESTION_OUTPUT_TOKENS = 800;
+const MAX_SUGGESTION_OUTPUT_TOKENS = 500;
 
 let openai: OpenAI | null = null;
 let supabase: SupabaseClient | null = null;
@@ -73,7 +98,7 @@ function getOpenAI() {
   }
 
   if (!openai) {
-    openai = new OpenAI({ apiKey });
+    openai = new OpenAI({ apiKey, maxRetries: 0, timeout: 20_000 });
   }
 
   return openai;
@@ -107,12 +132,66 @@ function getBearerToken(req: VercelRequest) {
   return match?.[1];
 }
 
-async function requireAuthenticatedUser(req: VercelRequest, requestId: string) {
+function readLimit(name: string, fallback: number) {
+  const configured = Number(process.env[name]);
+  return Number.isInteger(configured) && configured > 0 && configured <= 100_000
+    ? configured
+    : fallback;
+}
+
+function getRequestByteLength(req: VercelRequest) {
+  const rawContentLength = Array.isArray(req.headers['content-length'])
+    ? req.headers['content-length'][0]
+    : req.headers['content-length'];
+  const contentLength = Number(rawContentLength);
+  const parsedLength = Buffer.byteLength(JSON.stringify(req.body ?? null), 'utf8');
+
+  return Number.isFinite(contentLength)
+    ? Math.max(contentLength, parsedLength)
+    : parsedLength;
+}
+
+function buildSuggestionRateLimits(req: VercelRequest, userId: string): RateLimitRule[] {
+  const fingerprint = getClientFingerprint(req);
+  const rules: RateLimitRule[] = [
+    {
+      key: `suggestions:user:${userId}:hour`,
+      limit: readLimit('OPENAI_USER_HOURLY_LIMIT', 5),
+      windowSeconds: 60 * 60,
+    },
+    {
+      key: `suggestions:user:${userId}:day`,
+      limit: readLimit('OPENAI_USER_DAILY_LIMIT', 20),
+      windowSeconds: 24 * 60 * 60,
+    },
+  ];
+
+  if (fingerprint) {
+    rules.push({
+      key: `suggestions:ip:${fingerprint}:day`,
+      limit: readLimit('OPENAI_IP_DAILY_LIMIT', 50),
+      windowSeconds: 24 * 60 * 60,
+    });
+  }
+
+  rules.push({
+    key: 'suggestions:global:day',
+    limit: readLimit('OPENAI_GLOBAL_DAILY_LIMIT', 200),
+    windowSeconds: 24 * 60 * 60,
+  });
+
+  return rules;
+}
+
+async function requireAuthenticatedUser(req: VercelRequest) {
   const token = getBearerToken(req);
 
   if (!token) {
-    writeAuditLog('suggestions.auth_failed', { requestId, reason: 'missing_bearer_token' });
     throw new ApiError('You must be logged in to generate financial suggestions.', 401);
+  }
+
+  if (token.length > 4096 || token.split('.').length !== 3) {
+    throw new ApiError('Your session expired. Sign in again to generate financial suggestions.', 401);
   }
 
   const {
@@ -121,19 +200,17 @@ async function requireAuthenticatedUser(req: VercelRequest, requestId: string) {
   } = await getSupabase().auth.getUser(token);
 
   if (error || !user) {
-    writeAuditLog('suggestions.auth_failed', { requestId, reason: 'invalid_or_expired_token' });
     throw new ApiError('Your session expired. Sign in again to generate financial suggestions.', 401);
   }
 
-  writeAuditLog('suggestions.auth_succeeded', { requestId, userId: user.id });
   return user;
 }
 
-function value(source: FinancialInput | null | undefined, key: string) {
+function value(source: FinancialInput | GoalsInput | null | undefined, key: string) {
   return source?.[key] ?? 0;
 }
 
-function buildFinancialSummary(latest: FinancialInput, goals: FinancialInput | null | undefined) {
+function buildFinancialSummary(latest: FinancialInput, goals: GoalsInput | null | undefined) {
   return `
 Financial data:
 - Income: ${value(latest, 'income')}
@@ -273,23 +350,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const requestId = createRequestId(req);
   const startedAt = Date.now();
 
-  writeAuditLog('suggestions.request_received', { requestId, method: req.method });
+  res.setHeader('Cache-Control', 'no-store');
 
   if (req.method !== 'POST') {
-    writeAuditLog('suggestions.validation_failed', { requestId, reason: 'method_not_allowed', statusCode: 405 });
+    res.setHeader('Allow', 'POST');
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  const contentType = Array.isArray(req.headers['content-type'])
+    ? req.headers['content-type'][0]
+    : req.headers['content-type'];
+  if (!contentType?.toLowerCase().includes('application/json')) {
+    return res.status(415).json({ error: 'Content-Type must be application/json.' });
+  }
+
+  if (getRequestByteLength(req) > MAX_REQUEST_BYTES) {
+    return res.status(413).json({ error: 'Suggestion request is too large.' });
+  }
+
   try {
-    const user = await requireAuthenticatedUser(req, requestId);
+    const user = await requireAuthenticatedUser(req);
+    await enforceRateLimits(getSupabase(), buildSuggestionRateLimits(req, user.id));
 
-    const { latest, goals } = (req.body ?? {}) as SuggestionRequest;
-
-    if (!latest || typeof latest !== 'object') {
-      writeAuditLog('suggestions.validation_failed', { requestId, userId: user.id, reason: 'missing_latest_financial_data', statusCode: 400 });
-      return res.status(400).json({ error: 'Missing latest financial data' });
+    const parsedRequest = suggestionRequestSchema.safeParse(req.body);
+    if (!parsedRequest.success) {
+      writeAuditLog('suggestions.validation_failed', { requestId, userId: user.id, reason: 'invalid_financial_data', statusCode: 400 });
+      return res.status(400).json({ error: 'Financial data must contain valid numeric values.' });
     }
 
+    const { latest, goals } = parsedRequest.data;
     const suggestions = await generateSuggestions(buildFinancialSummary(latest, goals), requestId, user.id);
 
     writeAuditLog('suggestions.generated', {
@@ -301,14 +390,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json(suggestions);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error('[generate-suggestions] Error:', message);
-    const statusCode = error instanceof ApiError ? error.statusCode : 500;
-    writeAuditLog('suggestions.request_failed', {
-      requestId,
-      durationMs: Date.now() - startedAt,
-      statusCode,
-      reason: message,
-    });
+    const statusCode = error instanceof ApiError
+      ? error.statusCode
+      : error instanceof RateLimitExceededError || error instanceof RateLimitUnavailableError
+        ? error.statusCode
+        : 500;
+
+    if (error instanceof RateLimitExceededError) {
+      res.setHeader('Retry-After', String(error.retryAfterSeconds));
+    }
+
+    if (statusCode >= 500) {
+      console.error('[generate-suggestions] Error:', message);
+      writeAuditLog('suggestions.request_failed', {
+        requestId,
+        durationMs: Date.now() - startedAt,
+        statusCode,
+        reason: message,
+      });
+    }
     return res.status(statusCode).json({ error: message });
   }
 }

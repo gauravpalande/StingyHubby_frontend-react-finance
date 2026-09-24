@@ -3,11 +3,10 @@ type BillingPortalResponse = {
   error?: string;
 };
 
-export async function openBillingPortal(userId: string) {
+export async function openBillingPortal(accessToken: string) {
   const r = await fetch('/api/portal', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId }),
+    headers: { Authorization: `Bearer ${accessToken}` },
   });
 
   const data = (await r.json().catch(() => ({}))) as BillingPortalResponse;

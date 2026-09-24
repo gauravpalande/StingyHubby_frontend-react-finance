@@ -8,24 +8,38 @@ const FeedbackForm: React.FC = () => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [success, setSuccess] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user || isSubmitting) return;
 
-    const { error } = await supabase.from('feedback').insert({
-      user_id: user.id,
-      type,
-      title,
-      description,
-    });
+    const normalizedTitle = title.trim();
+    const normalizedDescription = description.trim();
+    if (!normalizedTitle) return;
 
-    if (error) {
-      alert('Error submitting feedback: ' + error.message);
-    } else {
-      setSuccess(true);
-      setTitle('');
-      setDescription('');
+    setIsSubmitting(true);
+    setSuccess(false);
+
+    try {
+      const { error } = await supabase.from('feedback').insert({
+        user_id: user.id,
+        type,
+        title: normalizedTitle,
+        description: normalizedDescription,
+      });
+
+      if (error) {
+        alert('Error submitting feedback: ' + error.message);
+      } else {
+        setSuccess(true);
+        setTitle('');
+        setDescription('');
+      }
+    } catch {
+      alert('Unable to submit feedback. Please try again later.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -55,15 +69,30 @@ const FeedbackForm: React.FC = () => {
 
         <label>
           Title:
-          <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} required />
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            maxLength={160}
+            disabled={isSubmitting}
+            required
+          />
         </label>
 
         <label>
           Description:
-          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={5} />
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            maxLength={5000}
+            disabled={isSubmitting}
+            rows={5}
+          />
         </label>
 
-        <button type="submit">Submit</button>
+        <button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? 'Submitting...' : 'Submit'}
+        </button>
       </form>
     </div>
   );

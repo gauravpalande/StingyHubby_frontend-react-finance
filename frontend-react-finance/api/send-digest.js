@@ -3,6 +3,60 @@ export const config = { runtime: "nodejs" };
 
 import PDFDocument from "pdfkit";
 import { PassThrough } from "stream";
+import { timingSafeEqual } from "node:crypto";
+
+const WEEKLY_DIGEST_TYPE = "weekly";
+const DEFAULT_DIGEST_RECIPIENT_LIMIT = 100;
+
+function firstHeaderValue(value) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function getDigestRecipientLimit() {
+  const configured = Number(process.env.DIGEST_RECIPIENT_LIMIT);
+  return Number.isInteger(configured) && configured > 0 && configured <= 1000
+    ? configured
+    : DEFAULT_DIGEST_RECIPIENT_LIMIT;
+}
+
+function hasValidCronSecret(req, cronSecret) {
+  const authorization = firstHeaderValue(req.headers.authorization) || "";
+  const expected = `Bearer ${cronSecret}`;
+  const actualBuffer = Buffer.from(authorization);
+  const expectedBuffer = Buffer.from(expected);
+
+  return actualBuffer.length === expectedBuffer.length &&
+    timingSafeEqual(actualBuffer, expectedBuffer);
+}
+
+function getUtcWeekPeriod(date) {
+  const weekStart = new Date(Date.UTC(
+    date.getUTCFullYear(),
+    date.getUTCMonth(),
+    date.getUTCDate()
+  ));
+  const daysSinceMonday = (weekStart.getUTCDay() + 6) % 7;
+  weekStart.setUTCDate(weekStart.getUTCDate() - daysSinceMonday);
+  return weekStart.toISOString().slice(0, 10);
+}
+
+async function updateDeliveryStatus(supabase, periodKey, userId, status, error) {
+  const values = {
+    status,
+    completed_at: new Date().toISOString(),
+    last_error: error ? String(error).slice(0, 500) : null,
+  };
+  const { error: updateError } = await supabase
+    .from("scheduled_email_deliveries")
+    .update(values)
+    .eq("digest_type", WEEKLY_DIGEST_TYPE)
+    .eq("period_key", periodKey)
+    .eq("user_id", userId);
+
+  if (updateError) {
+    console.error("[weekly-digest] Failed to update delivery status:", updateError.message);
+  }
+}
 
 /* --------------------------- Helpers --------------------------- */
 function toUSD(n) { return `$${(n || 0).toFixed(2)}`; }
@@ -229,6 +283,20 @@ async function renderWeeklyDigestHtml(props) {
 
 /* --------------------------- Handler --------------------------- */
 export default async function handler(req, res) {
+  if (req.method !== "GET") {
+    res.setHeader("Allow", "GET");
+    return res.status(405).json({ error: "Method not allowed" });
+  }
+
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret || cronSecret.length < 16) {
+    return res.status(503).json({ error: "Scheduled job authentication is unavailable" });
+  }
+
+  if (!hasValidCronSecret(req, cronSecret)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
   try {
     const url = new URL(
       req.url,
@@ -261,10 +329,18 @@ export default async function handler(req, res) {
     );
     const resend = new Resend(process.env.RESEND_API_KEY);
 
+    const { error: cleanupError } = await supabase.rpc(
+      "cleanup_cost_protection_data"
+    );
+    if (cleanupError) {
+      throw new Error(`Unable to clean cost-protection data: ${cleanupError.message}`);
+    }
+
     const { data: prefs, error: prefError } = await supabase
       .from("preferences")
       .select("user_id")
-      .eq("email_weekly_digest", true);
+      .eq("email_weekly_digest", true)
+      .limit(getDigestRecipientLimit());
 
     if (prefError)
       return res.status(500).json({ error: prefError.message });
@@ -314,16 +390,44 @@ export default async function handler(req, res) {
     }
 
     let sentCount = 0;
+    let duplicateCount = 0;
+    const periodKey = getUtcWeekPeriod(new Date());
 
     for (const user of users) {
+      const { data: claimed, error: claimError } = await supabase.rpc(
+        "claim_scheduled_email_delivery",
+        {
+          p_digest_type: WEEKLY_DIGEST_TYPE,
+          p_period_key: periodKey,
+          p_user_id: user.id,
+          p_stale_after_seconds: 8 * 24 * 60 * 60,
+        }
+      );
+
+      if (claimError) {
+        throw new Error(`Unable to claim weekly delivery: ${claimError.message}`);
+      }
+
+      if (!claimed) {
+        duplicateCount += 1;
+        continue;
+      }
+
+      try {
       const { data: history, error: historyError } = await supabase
         .from("submissions")
-        .select("*")
+        .select(
+          "id, created_at, income, checking, emergency, health, retirement, creditCards, mortgage, carPayments, utilities, short_term_suggestion, long_term_suggestion, goal_suggestion, oneline_suggestion"
+        )
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
         .limit(10);
 
-      if (historyError || !history?.length) continue;
+      if (historyError) throw new Error(historyError.message);
+      if (!history?.length) {
+        await updateDeliveryStatus(supabase, periodKey, user.id, "skipped");
+        continue;
+      }
 
       const totalIncome = history.reduce(
         (sum, r) => sum + (r.income || 0),
@@ -343,14 +447,14 @@ export default async function handler(req, res) {
       const chartUrl = buildChartUrl(history);
       let chartBuffer;
       try {
-        const img = await fetch(chartUrl);
+        const img = await fetch(chartUrl, { signal: AbortSignal.timeout(8_000) });
         chartBuffer = Buffer.from(await img.arrayBuffer());
       } catch {
         chartBuffer = undefined;
       }
 
       const aiText = buildAiSuggestionText(history);
-      const displayName = user.name || user.email;
+      const displayName = String(user.name || user.email || "PennyWize user").slice(0, 200);
 
       // ✅ Manage preferences still uses magic link
       let manageUrl = `${site}/app/preferences`;
@@ -420,27 +524,41 @@ export default async function handler(req, res) {
       } catch {}
       if (logoAttachment) attachments.push(logoAttachment);
 
-      await resend.emails.send({
-        from: "PennyWize <digest@stingyhubby.xyz>",
-        to: user.email,
-        subject: "Your Weekly Financial Digest",
-        html,
-        ...(attachments.length ? { attachments } : {}),
-      });
+      const emailResult = await resend.emails.send(
+        {
+          from: "PennyWize <digest@stingyhubby.xyz>",
+          to: user.email,
+          subject: "Your Weekly Financial Digest",
+          html,
+          ...(attachments.length ? { attachments } : {}),
+        },
+        { idempotencyKey: `pennywize-weekly:${periodKey}:${user.id}` }
+      );
+
+      if (emailResult.error) {
+        throw new Error(emailResult.error.message || "Resend rejected the weekly digest");
+      }
 
       await supabase.from("email_logs").insert({
         user_id: user.id,
         email: user.email,
         status: "sent",
-        metadata: { type: "weekly" },
+        metadata: { type: "weekly", resendId: emailResult.data?.id },
       });
 
+      await updateDeliveryStatus(supabase, periodKey, user.id, "sent");
+
       sentCount += 1;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        await updateDeliveryStatus(supabase, periodKey, user.id, "failed", message);
+        console.error(`[weekly-digest] Failed for user ${user.id}:`, message);
+      }
     }
 
     return res
       .status(200)
-      .json({ message: "Digest run finished", sent: sentCount });
+      .json({ message: "Digest run finished", sent: sentCount, duplicatesSkipped: duplicateCount });
   } catch (err) {
     console.error("💥 Unhandled error:", err);
     const msg =

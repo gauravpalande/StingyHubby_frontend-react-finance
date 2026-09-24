@@ -89,7 +89,16 @@ const PreferencesPage: React.FC = () => {
 
     try {
       setBusy('portal');
-      await openBillingPortal(user.id);
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+
+      if (sessionError || !session?.access_token) {
+        throw new Error('Your session has expired. Please sign in again.');
+      }
+
+      await openBillingPortal(session.access_token);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Failed to open billing portal';
       setBanner({ type: 'error', text: message });

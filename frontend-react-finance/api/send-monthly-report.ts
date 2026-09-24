@@ -13,6 +13,10 @@ import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import PDFDocument from 'pdfkit';
+import { timingSafeEqual } from 'node:crypto';
+
+const MONTHLY_DIGEST_TYPE = 'monthly';
+const DEFAULT_DIGEST_RECIPIENT_LIMIT = 100;
 
 // ---------- Singletons ----------
 const supabase = createClient(
@@ -21,9 +25,66 @@ const supabase = createClient(
 );
 const resend = new Resend(process.env.RESEND_API_KEY!);
 
+function firstHeaderValue(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function getDigestRecipientLimit() {
+  const configured = Number(process.env.DIGEST_RECIPIENT_LIMIT);
+  return Number.isInteger(configured) && configured > 0 && configured <= 1000
+    ? configured
+    : DEFAULT_DIGEST_RECIPIENT_LIMIT;
+}
+
+function hasValidCronSecret(req: VercelRequest, cronSecret: string) {
+  const authorization = firstHeaderValue(req.headers.authorization) || '';
+  const actualBuffer = Buffer.from(authorization);
+  const expectedBuffer = Buffer.from(`Bearer ${cronSecret}`);
+
+  return actualBuffer.length === expectedBuffer.length &&
+    timingSafeEqual(actualBuffer, expectedBuffer);
+}
+
+function getPreviousMonthPeriod(date: Date) {
+  const previousMonth = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() - 1, 1));
+  return previousMonth.toISOString().slice(0, 7);
+}
+
+async function updateDeliveryStatus(
+  periodKey: string,
+  userId: string,
+  status: 'sent' | 'skipped' | 'failed',
+  error?: string
+) {
+  const { error: updateError } = await supabase
+    .from('scheduled_email_deliveries')
+    .update({
+      status,
+      completed_at: new Date().toISOString(),
+      last_error: error ? error.slice(0, 500) : null,
+    })
+    .eq('digest_type', MONTHLY_DIGEST_TYPE)
+    .eq('period_key', periodKey)
+    .eq('user_id', userId);
+
+  if (updateError) {
+    console.error('[monthly-digest] Failed to update delivery status:', updateError.message);
+  }
+}
+
 // ---------- Helpers ----------
 function toUSD(n: number) {
   return `$${(n || 0).toFixed(2)}`;
+}
+
+function escapeHtml(value: string) {
+  return value.replace(/[&<>"']/g, (character) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  })[character] || character);
 }
 
 // Build QuickChart URL (larger image for crisp PDF)
@@ -191,14 +252,32 @@ async function buildDigestPdfBuffer(params: {
 
 // ---------- Handler ----------
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  console.log('📩 Monthly Digest handler started');
+  if (req.method !== 'GET') {
+    res.setHeader('Allow', 'GET');
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret || cronSecret.length < 16) {
+    return res.status(503).json({ error: 'Scheduled job authentication is unavailable' });
+  }
+
+  if (!hasValidCronSecret(req, cronSecret)) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
 
   try {
+    const { error: cleanupError } = await supabase.rpc('cleanup_cost_protection_data');
+    if (cleanupError) {
+      throw new Error(`Unable to clean cost-protection data: ${cleanupError.message}`);
+    }
+
     // Step 1: Get preferences where email_monthly_digest = true
     const { data: prefs, error: prefError } = await supabase
       .from('preferences')
       .select('user_id')
-      .eq('email_monthly_digest', true);
+      .eq('email_monthly_digest', true)
+      .limit(getDigestRecipientLimit());
 
     if (prefError) {
       console.error('❌ Error fetching preferences:', prefError.message);
@@ -206,7 +285,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     if (!prefs?.length) {
-      console.log('ℹ️ No opted-in users found.');
       return res.status(200).json({ message: 'No opted-in users' });
     }
 
@@ -223,27 +301,54 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(500).json({ error: userError?.message || 'No users found' });
     }
 
+    const periodKey = getPreviousMonthPeriod(new Date());
+    let sentCount = 0;
+    let duplicateCount = 0;
+
     // Step 3: Loop through users and send digests
     for (const user of users) {
+      const { data: claimed, error: claimError } = await supabase.rpc(
+        'claim_scheduled_email_delivery',
+        {
+          p_digest_type: MONTHLY_DIGEST_TYPE,
+          p_period_key: periodKey,
+          p_user_id: user.id,
+          p_stale_after_seconds: 32 * 24 * 60 * 60,
+        }
+      );
+
+      if (claimError) {
+        throw new Error(`Unable to claim monthly delivery: ${claimError.message}`);
+      }
+
+      if (!claimed) {
+        duplicateCount += 1;
+        continue;
+      }
+
+      try {
       // Previous calendar month
       const now = new Date();
-      const firstDayPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const lastDayPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+      const firstDayPrevMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
+      const firstDayCurrentMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+      const lastDayPrevMonth = new Date(firstDayCurrentMonth.getTime() - 1);
 
       const { data: history, error: historyError } = await supabase
         .from('submissions')
-        .select('*')
+        .select(
+          'id, created_at, income, checking, emergency, health, retirement, creditCards, mortgage, carPayments, utilities, short_term_suggestion, long_term_suggestion, goal_suggestion, oneline_suggestion'
+        )
         .eq('user_id', user.id)
         .gte('created_at', firstDayPrevMonth.toISOString())
         .lte('created_at', lastDayPrevMonth.toISOString())
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(100);
 
       if (historyError) {
-        console.error(`❌ History fetch error for ${user.email}:`, historyError.message);
-        continue;
+        throw new Error(historyError.message);
       }
       if (!history || history.length === 0) {
-        console.log(`ℹ️ No monthly history for ${user.email}, skipping.`);
+        await updateDeliveryStatus(periodKey, user.id, 'skipped');
         continue;
       }
 
@@ -264,7 +369,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const chartUrl = buildChartUrl(history);
       let chartBuffer: Buffer | undefined;
       try {
-        const resp = await fetch(chartUrl);
+        const resp = await fetch(chartUrl, { signal: AbortSignal.timeout(8_000) });
         const arr = await resp.arrayBuffer();
         chartBuffer = Buffer.from(arr);
       } catch (e) {
@@ -276,12 +381,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const aiText = buildAiSuggestionText(history);
 
       // Email HTML
-      const displayName = user.name || user.email;
+      const displayName = String(user.name || user.email || 'PennyWize user').slice(0, 200);
       const periodLabel = `${firstDayPrevMonth.toLocaleDateString()} — ${lastDayPrevMonth.toLocaleDateString()}`;
+      const safeDisplayName = escapeHtml(displayName);
+      const safeAiText = escapeHtml(aiText);
 
       const htmlContent = `
         <div style="font-family: system-ui, -apple-system, Segoe UI, Roboto; line-height:1.5;">
-          <p>Hi ${displayName},</p>
+          <p>Hi ${safeDisplayName},</p>
           <p>Here’s your monthly financial digest (${periodLabel}):</p>
           <ul>
             <li><strong>📥 Total Income:</strong> ${toUSD(totalIncome)}</li>
@@ -289,7 +396,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             <li><strong>💰 Estimated Savings:</strong> ${toUSD(savings)}</li>
           </ul>
           <p><img src="${chartUrl}" alt="Financial Chart" style="max-width: 100%; height: auto;" /></p>
-          <pre style="white-space: pre-wrap; font-family: inherit">${aiText}</pre>
+          <pre style="white-space: pre-wrap; font-family: inherit">${safeAiText}</pre>
           <p><small>To unsubscribe, update your preferences at https://pennywize.vercel.app/.</small></p>
         </div>
       `;
@@ -334,29 +441,42 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
       }
 
-      try {
-        const response = await resend.emails.send({
+      const response = await resend.emails.send(
+        {
           from: 'digest@stingyhubby.xyz',
           to: user.email,
           subject: 'Your Monthly Financial Digest',
           html: htmlContent,
           ...(attachments.length ? { attachments } : {}),
-        });
+        },
+        { idempotencyKey: `pennywize-monthly:${periodKey}:${user.id}` }
+      );
 
-        await supabase.from('email_logs').insert({
-          user_id: user.id,
-          email: user.email,
-          status: 'sent',
-          metadata: response ?? null,
-        });
+      if (response.error) {
+        throw new Error(response.error.message || 'Resend rejected the monthly digest');
+      }
 
-        console.log(`✅ Sent monthly email to ${user.email}`);
-      } catch (emailError) {
-        console.error(`❌ Failed to send email to ${user.email}:`, emailError);
+      await supabase.from('email_logs').insert({
+        user_id: user.id,
+        email: user.email,
+        status: 'sent',
+        metadata: { type: 'monthly', resendId: response.data?.id },
+      });
+
+      await updateDeliveryStatus(periodKey, user.id, 'sent');
+      sentCount += 1;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        await updateDeliveryStatus(periodKey, user.id, 'failed', message);
+        console.error(`[monthly-digest] Failed for user ${user.id}:`, message);
       }
     }
 
-    return res.status(200).json({ message: 'Monthly Digest emails sent successfully' });
+    return res.status(200).json({
+      message: 'Monthly Digest run finished',
+      sent: sentCount,
+      duplicatesSkipped: duplicateCount,
+    });
   } catch (err: unknown) {
     const errorMessage =
       err instanceof Error ? err.message : 'Unknown error occurred';

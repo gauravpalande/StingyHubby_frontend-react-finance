@@ -22,6 +22,14 @@ export async function generateFinancialSuggestions(
   const body = await response.json().catch(() => ({}));
 
   if (!response.ok) {
+    if (response.status === 429) {
+      const retryAfter = Number(response.headers.get('Retry-After'));
+      const waitMessage = Number.isFinite(retryAfter)
+        ? ` Try again in about ${Math.max(1, Math.ceil(retryAfter / 60))} minute(s).`
+        : '';
+      throw new Error(`Suggestion request limit reached.${waitMessage}`);
+    }
+
     throw new Error(body?.error || 'Failed to generate financial suggestions');
   }
 

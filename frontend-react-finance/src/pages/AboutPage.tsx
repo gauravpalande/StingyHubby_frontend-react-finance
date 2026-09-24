@@ -31,9 +31,14 @@ const readmeHighlights = [
       'Suggestion generation is protected by Supabase authentication so only signed-in users can request personalized advice.',
   },
   {
+    title: 'Cost-Abuse Protection',
+    description:
+      'Server-side quotas, strict request limits, protected scheduled jobs, duplicate-email prevention, and bounded imports reduce automated misuse and unexpected service costs.',
+  },
+  {
     title: 'Operational Visibility',
     description:
-      'The backend records high-level audit events such as request outcomes, authentication results, validation failures, and suggestion generation activity.',
+      'The backend records bounded, high-level audit events for validation failures, server outcomes, and suggestion generation without logging financial input values.',
   },
   {
     title: 'Database Performance',

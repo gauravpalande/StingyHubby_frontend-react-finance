@@ -12,6 +12,10 @@ import {
   Tooltip,
   Legend,
 } from 'recharts';
+import {
+  buildImportedSubmissions,
+  MAX_IMPORT_FILE_BYTES,
+} from '../utils/csvImport';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#A28BD4', '#F29C1F', '#57D9A3', '#FF6B6B'];
 
@@ -71,7 +75,8 @@ const EditableFinancialHistory: React.FC = () => {
           'id, created_at, income, checking, emergency, health, retirement, creditCards, mortgage, carPayments, utilities'
         )
         .eq('user_id', user.id)
-        .order('created_at', { ascending: true }),
+        .order('created_at', { ascending: false })
+        .limit(1000),
       supabase
         .from('preferences')
         .select('graph_type')
@@ -81,7 +86,7 @@ const EditableFinancialHistory: React.FC = () => {
 
     if (historyRes.data) {
       setHistory(
-        (historyRes.data as FinancialHistoryRecord[]).map((row) => ({
+        (historyRes.data as FinancialHistoryRecord[]).slice().reverse().map((row) => ({
           ...row,
           timestamp: new Date(row.created_at).toLocaleDateString(),
         }))
@@ -165,6 +170,10 @@ const EditableFinancialHistory: React.FC = () => {
     if (!file || !user) return;
 
     try {
+      if (file.size > MAX_IMPORT_FILE_BYTES) {
+        throw new Error('CSV files must be 1 MB or smaller.');
+      }
+
       setImportStatus('Importing CSV...');
       const csv = await file.text();
       const rows = buildImportedSubmissions(csv, user.id);
