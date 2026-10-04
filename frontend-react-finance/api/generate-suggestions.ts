@@ -8,7 +8,7 @@ import {
   RateLimitExceededError,
   RateLimitUnavailableError,
   type RateLimitRule,
-} from './_lib/rateLimit';
+} from './_lib/rateLimit.js';
 
 const MAX_FINANCIAL_AMOUNT = 1_000_000_000_000;
 const MAX_REQUEST_BYTES = 10_000;

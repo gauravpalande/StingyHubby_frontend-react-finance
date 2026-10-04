@@ -15,6 +15,7 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "lint": "eslint .",
+    "test": "node --test tests/*.test.mjs",
     "preview": "vite preview",
     "build:emails": "esbuild api/emails/WeeklyDigest.tsx --bundle --platform=node --format=esm --target=node24 --jsx=automatic --outfile=api/.compiled/WeeklyDigest.mjs",
     "prebuild": "npm run build:emails"

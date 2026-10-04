@@ -7,7 +7,7 @@ import {
   RateLimitExceededError,
   RateLimitUnavailableError,
   type RateLimitRule,
-} from './_lib/rateLimit';
+} from './_lib/rateLimit.js';
 
 class PortalError extends Error {
   constructor(
