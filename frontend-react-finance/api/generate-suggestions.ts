@@ -1,6 +1,7 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
+import { zodTextFormat } from 'openai/helpers/zod';
 import { z } from 'zod';
 import {
   enforceRateLimits,
@@ -46,6 +47,14 @@ type SuggestionKey =
 
 type FinancialSuggestions = Record<SuggestionKey, string>;
 
+const financialSuggestionsSchema = z.object({
+  short_term_suggestion: z.string(),
+  long_term_suggestion: z.string(),
+  goal_suggestion: z.string(),
+  oneline_suggestion: z.string(),
+}).strict();
+const financialSuggestionsFormat = zodTextFormat(financialSuggestionsSchema, 'financial_suggestions');
+
 type AuditEvent =
   | 'suggestions.validation_failed'
   | 'suggestions.model_fallback'
@@ -64,7 +73,7 @@ class ApiError extends Error {
 }
 
 const OPENAI_SUGGESTION_MODELS = ['gpt-5.6-luna', 'gpt-4.1-nano'] as const;
-const MAX_SUGGESTION_OUTPUT_TOKENS = 500;
+const MAX_SUGGESTION_OUTPUT_TOKENS = 1000;
 
 let openai: OpenAI | null = null;
 let supabase: SupabaseClient | null = null;
@@ -235,15 +244,8 @@ ${financialSummary}
 Create personalized financial suggestions for this user.
 Use simple, user-friendly language.
 Base advice on common United States personal finance guidance, including the income/spending priority flowchart concept: essentials first, high-interest debt, emergency savings, retirement, then longer-term goals.
+Keep each detailed suggestion to two concise sentences. Make the short-term and long-term suggestions actionable; discuss goal progress only in the goal suggestion. Make the one-line suggestion exactly one concise sentence.
 Do not include disclaimers. Do not mention GPT or AI.
-
-Return only valid JSON with exactly these string keys:
-{
-  "short_term_suggestion": "One detailed short-term, actionable financial suggestion.",
-  "long_term_suggestion": "One detailed long-term, actionable financial suggestion.",
-  "goal_suggestion": "One detailed, actionable suggestion about progress toward each goal. Focus only on goals.",
-  "oneline_suggestion": "Exactly one concise sentence with the most important financial suggestion."
-}
 `.trim();
 }
 
@@ -304,13 +306,23 @@ function parseSuggestions(raw: string): FinancialSuggestions {
     .replace(/^```(?:json)?\s*/i, '')
     .replace(/\s*```$/, '');
 
-  const parsed = JSON.parse(withoutCodeFence) as Partial<FinancialSuggestions>;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(withoutCodeFence);
+  } catch {
+    throw new ApiError('OpenAI returned an incomplete financial suggestion response. Please try again.', 502);
+  }
+
+  const validated = financialSuggestionsSchema.safeParse(parsed);
+  if (!validated.success) {
+    throw new ApiError('OpenAI returned an invalid financial suggestion response. Please try again.', 502);
+  }
 
   return {
-    short_term_suggestion: requireSuggestion(parsed, 'short_term_suggestion'),
-    long_term_suggestion: requireSuggestion(parsed, 'long_term_suggestion'),
-    goal_suggestion: requireSuggestion(parsed, 'goal_suggestion'),
-    oneline_suggestion: requireSuggestion(parsed, 'oneline_suggestion'),
+    short_term_suggestion: requireSuggestion(validated.data, 'short_term_suggestion'),
+    long_term_suggestion: requireSuggestion(validated.data, 'long_term_suggestion'),
+    goal_suggestion: requireSuggestion(validated.data, 'goal_suggestion'),
+    oneline_suggestion: requireSuggestion(validated.data, 'oneline_suggestion'),
   };
 }
 
@@ -321,7 +333,18 @@ async function generateSuggestions(financialSummary: string, requestId: string, 
         model,
         input: buildPrompt(financialSummary),
         max_output_tokens: MAX_SUGGESTION_OUTPUT_TOKENS,
+        text: { format: financialSuggestionsFormat },
+        ...(model === OPENAI_SUGGESTION_MODELS[0]
+          ? { reasoning: { effort: 'low' as const } }
+          : {}),
       });
+
+      if (response.status === 'incomplete') {
+        const message = response.incomplete_details?.reason === 'max_output_tokens'
+          ? 'OpenAI ran out of response tokens before finishing the financial suggestions. Please try again.'
+          : 'OpenAI did not finish generating financial suggestions. Please try again.';
+        throw new ApiError(message, 502);
+      }
 
       return parseSuggestions(response.output_text);
     } catch (error: unknown) {
