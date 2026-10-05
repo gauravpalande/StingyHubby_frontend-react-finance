@@ -13,10 +13,10 @@ const EMPTY_GOALS: Goals = {
   health: 0,
 };
 
-const GOAL_LABELS: Record<GoalField, string> = {
-  emergency: 'Emergency fund',
-  retirement: 'Retirement',
-  health: 'Health savings',
+const GOAL_FIELDS_CONFIG: Record<GoalField, { label: string; hint: string }> = {
+  emergency: { label: 'Emergency fund', hint: 'Your target savings amount' },
+  retirement: { label: 'Retirement', hint: 'Your long-term savings target' },
+  health: { label: 'Health savings', hint: 'Your healthcare savings target' },
 };
 
 const GoalSettingsForm = () => {
@@ -24,6 +24,8 @@ const GoalSettingsForm = () => {
   const user = useUser();
   const [goals, setGoals] = useState<Goals>(EMPTY_GOALS);
   const [isSaving, setIsSaving] = useState(false);
+  const [message, setMessage] = useState('');
+  const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
     const loadGoals = async () => {
@@ -37,6 +39,8 @@ const GoalSettingsForm = () => {
 
       if (error) {
         console.error('Error loading goals:', error.message);
+        setMessage('Could not load your goals. You can still enter new targets below.');
+        setHasError(true);
         return;
       }
 
@@ -58,49 +62,86 @@ const GoalSettingsForm = () => {
       ...current,
       [field]: Number.isFinite(amount) ? amount : 0,
     }));
+    setMessage('');
   };
 
   const handleSave = async () => {
     if (!user || isSaving) return;
 
     setIsSaving(true);
-    const { error } = await supabase
-      .from('goals')
-      .upsert({ ...goals, user_id: user.id }, { onConflict: 'user_id' });
-    setIsSaving(false);
+    setMessage('');
 
-    if (error) {
-      console.error('Error saving goals:', error.message);
-      alert('Failed to save goals. Please try again.');
-      return;
+    try {
+      const { error } = await supabase
+        .from('goals')
+        .upsert({ ...goals, user_id: user.id }, { onConflict: 'user_id' });
+
+      if (error) {
+        console.error('Error saving goals:', error.message);
+        setMessage('Could not save your goals. Please try again.');
+        setHasError(true);
+        return;
+      }
+
+      setMessage('Goals saved successfully.');
+      setHasError(false);
+    } catch (error) {
+      console.error('Error saving goals:', error);
+      setMessage('Could not save your goals. Please try again.');
+      setHasError(true);
+    } finally {
+      setIsSaving(false);
     }
-
-    alert('Goals saved!');
   };
 
   return (
-    <section aria-labelledby="goal-settings-heading" style={{ maxWidth: 500 }}>
-      <h2 id="goal-settings-heading">Set Financial Goals</h2>
+    <section className="goal-settings-card" aria-labelledby="goal-settings-heading">
+      <div className="finance-card-heading">
+        <div>
+          <span className="finance-section-eyebrow">OPTIONAL</span>
+          <h2 id="goal-settings-heading">Savings goals</h2>
+          <p>Set targets to see how your balances are progressing.</p>
+        </div>
+      </div>
 
-      {GOAL_FIELDS.map((field) => (
-        <label key={field} style={{ display: 'block', marginBottom: 12 }}>
-          <span style={{ display: 'block', marginBottom: 4 }}>{GOAL_LABELS[field]} goal ($)</span>
-          <input
-            type="number"
-            min={0}
-            max={MAX_GOAL_AMOUNT}
-            step="any"
-            value={Number.isFinite(goals[field]) ? goals[field] : ''}
-            onChange={(event) => handleChange(field, event.target.value)}
-            disabled={isSaving}
-            style={{ width: '100%', padding: 8 }}
-          />
-        </label>
-      ))}
+      <div className="goal-fields-grid">
+        {GOAL_FIELDS.map((field) => {
+          const { label, hint } = GOAL_FIELDS_CONFIG[field];
+          return (
+            <div className="goal-field" key={field}>
+              <label htmlFor={`goal-${field}`}>{label}</label>
+              <span className="finance-field-hint" id={`goal-${field}-hint`}>{hint}</span>
+              <div className="finance-input-wrap">
+                <span aria-hidden="true" className="finance-currency-symbol">$</span>
+                <input
+                  id={`goal-${field}`}
+                  type="number"
+                  inputMode="decimal"
+                  autoComplete="off"
+                  min={0}
+                  max={MAX_GOAL_AMOUNT}
+                  step="any"
+                  value={Number.isFinite(goals[field]) ? goals[field] : ''}
+                  onChange={(event) => handleChange(field, event.target.value)}
+                  disabled={isSaving}
+                  aria-describedby={`goal-${field}-hint`}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
 
-      <button type="button" onClick={handleSave} disabled={isSaving} style={{ padding: '10px 20px' }}>
-        {isSaving ? 'Saving...' : 'Save Goals'}
-      </button>
+      <div className="goal-form-footer">
+        <button className="finance-secondary-submit" type="button" onClick={handleSave} disabled={isSaving || !user}>
+          {isSaving ? 'Saving goals…' : 'Save goals'}
+        </button>
+        {message && (
+          <p className={`finance-form-message ${hasError ? 'finance-form-message-error' : 'finance-form-message-success'}`} role={hasError ? 'alert' : 'status'}>
+            {message}
+          </p>
+        )}
+      </div>
     </section>
   );
 };

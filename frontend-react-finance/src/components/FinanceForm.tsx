@@ -4,128 +4,239 @@ import { useSupabaseClient, useUser } from '@supabase/auth-helpers-react';
 import { generateFinancialSuggestions } from '../utils/suggestions';
 import type { FormData } from '../types/formTypes';
 
-const spinnerStyle: React.CSSProperties = {
-  border: '2px solid #f3f3f3',
-  borderTop: '2px solid #007bff',
-  borderRadius: '50%',
-  width: 16,
-  height: 16,
-  animation: 'spin 1s linear infinite',
-};
+type FinanceField = keyof FormData;
+
+const MAX_FINANCIAL_AMOUNT = 1_000_000_000_000;
+
+const FINANCIAL_FIELDS: readonly {
+  name: FinanceField;
+  label: string;
+  hint: string;
+}[] = [
+  { name: 'income', label: 'Monthly income', hint: 'Take-home pay' },
+  { name: 'checking', label: 'Checking balance', hint: 'Current account balance' },
+  { name: 'emergency', label: 'Emergency savings', hint: 'Current balance' },
+  { name: 'health', label: 'Health savings', hint: 'Current balance' },
+  { name: 'retirement', label: 'Retirement savings', hint: 'Current balance' },
+  { name: 'creditCards', label: 'Credit card payments', hint: 'Monthly total' },
+  { name: 'mortgage', label: 'Mortgage or rent', hint: 'Monthly payment' },
+  { name: 'carPayments', label: 'Car payments', hint: 'Monthly total' },
+  { name: 'utilities', label: 'Utilities', hint: 'Monthly total' },
+];
+
+const FIELD_GROUPS: readonly {
+  title: string;
+  description: string;
+  fields: readonly FinanceField[];
+}[] = [
+  {
+    title: 'Income & cash',
+    description: 'What comes in and what you have on hand.',
+    fields: ['income', 'checking'],
+  },
+  {
+    title: 'Savings balances',
+    description: 'Your current savings and investment balances.',
+    fields: ['emergency', 'health', 'retirement'],
+  },
+  {
+    title: 'Monthly expenses',
+    description: 'Your regular payments each month.',
+    fields: ['creditCards', 'mortgage', 'carPayments', 'utilities'],
+  },
+];
 
 const FinanceForm: React.FC = () => {
-  const { register, handleSubmit, formState: { errors }, reset } = useForm<FormData>();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    reset,
+  } = useForm<FormData>();
   const supabase = useSupabaseClient();
   const user = useUser();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  const [isLoadingPrevious, setIsLoadingPrevious] = useState(false);
+  const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState<'success' | 'error' | 'info'>('info');
+
+  const usePreviousValues = async () => {
+    if (!user || isLoadingPrevious || isSubmitting) return;
+
+    setIsLoadingPrevious(true);
+    setMessage('');
+
+    try {
+      const { data, error } = await supabase
+        .from('submissions')
+        .select('income, checking, emergency, health, retirement, creditCards, mortgage, carPayments, utilities')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        setMessageType('error');
+        setMessage('Could not load your previous update. Please try again.');
+        return;
+      }
+
+      if (!data) {
+        setMessageType('info');
+        setMessage('You do not have a previous update yet. Enter your amounts below.');
+        return;
+      }
+
+      const previousValues = Object.fromEntries(
+        FINANCIAL_FIELDS.map(({ name }) => [name, Number(data[name]) || 0])
+      ) as FormData;
+
+      reset(previousValues);
+      setMessageType('success');
+      setMessage('Previous values loaded. Update anything that has changed.');
+    } catch (error) {
+      console.error('Error loading previous financial update:', error);
+      setMessageType('error');
+      setMessage('Could not load your previous update. Please try again.');
+    } finally {
+      setIsLoadingPrevious(false);
+    }
+  };
 
   const onSubmit = async (data: FormData) => {
     if (!user) {
-      alert('You must be logged in to submit financial data.');
+      setMessageType('error');
+      setMessage('Sign in to save a financial update.');
       return;
     }
 
     setIsSubmitting(true);
-    setSubmitted(false);
+    setMessage('Generating your financial suggestions…');
+    setMessageType('info');
 
-    const { data: goals } = await supabase
-      .from('goals')
-      .select('emergency, retirement, health')
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    let suggestions;
     try {
+      const { data: goals } = await supabase
+        .from('goals')
+        .select('emergency, retirement, health')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
       const {
         data: { session },
         error: sessionError,
       } = await supabase.auth.getSession();
 
       if (sessionError || !session?.access_token) {
-        throw new Error('Your session expired. Sign in again to generate financial suggestions.');
+        throw new Error('Your session expired. Sign in again to generate suggestions.');
       }
 
-      suggestions = await generateFinancialSuggestions(data, goals, session.access_token);
-    } catch (error) {
-      console.error('Suggestion generation error:', error);
-      setIsSubmitting(false);
-      const message =
-        error instanceof Error
-          ? error.message
-          : 'There was an error generating suggestions. Please try again.';
-      alert(message);
-      return;
-    }
+      const suggestions = await generateFinancialSuggestions(data, goals, session.access_token);
+      const { error } = await supabase.from('submissions').insert([{
+        ...data,
+        ...suggestions,
+        user_id: user.id,
+      }]);
 
-    const payload = {
-      ...data,
-      ...suggestions,
-      user_id: user.id,
-    };
+      if (error) {
+        throw new Error('Could not save your financial update. Please try again.');
+      }
 
-    const { error } = await supabase.from('submissions').insert([payload]);
-
-    setIsSubmitting(false);
-
-    if (!error) {
-      setSubmitted(true);
       reset();
-      setTimeout(() => setSubmitted(false), 5000); // hide after 5 seconds
-    } else {
-      alert('There was an error submitting the form. Please try again.');
+      setMessageType('success');
+      setMessage('Financial update saved successfully.');
+    } catch (error) {
+      console.error('Financial update error:', error);
+      setMessageType('error');
+      setMessage(error instanceof Error ? error.message : 'Could not save your update. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)}>
-      <style>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-      `}</style>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr', gap: '12px 24px', marginBottom: 24 }}>
-        {['income', 'checking', 'emergency', 'health', 'retirement', 'creditCards', 'mortgage', 'carPayments', 'utilities'].map((field) => (
-          <React.Fragment key={field}>
-            <label htmlFor={field} style={{ fontWeight: 'bold' }}>
-              {field.charAt(0).toUpperCase() + field.slice(1)}:
-            </label>
-            <div>
-              <input
-                id={field}
-                type="number"
-                step="any"
-                min={-1_000_000_000_000}
-                max={1_000_000_000_000}
-                {...register(field as keyof FormData, {
-                  required: true,
-                  valueAsNumber: true,
-                  min: -1_000_000_000_000,
-                  max: 1_000_000_000_000,
-                })}
-                disabled={isSubmitting}
-              />
-              {errors[field as keyof FormData] && (
-                <span style={{ color: 'red', marginLeft: 8 }}>Required</span>
-              )}
-            </div>
-          </React.Fragment>
-        ))}
+    <section className="finance-entry-card" aria-labelledby="finance-entry-heading">
+      <div className="finance-entry-heading-row">
+        <div>
+          <h2 id="finance-entry-heading">Financial snapshot</h2>
+          <p className="finance-entry-intro">Enter your monthly income and expenses alongside your current balances.</p>
+        </div>
+        <button
+          className="finance-previous-button"
+          type="button"
+          onClick={usePreviousValues}
+          disabled={isLoadingPrevious || isSubmitting || !user}
+        >
+          {isLoadingPrevious ? 'Loading…' : 'Use previous values'}
+        </button>
       </div>
 
-      <button type="submit" disabled={isSubmitting} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        {isSubmitting ? <span style={spinnerStyle} /> : 'Submit'}
-      </button>
+      <form onSubmit={handleSubmit(onSubmit)} noValidate>
+        <div className="finance-groups-grid">
+          {FIELD_GROUPS.map((group) => (
+            <fieldset className="finance-field-group" key={group.title} disabled={isSubmitting}>
+              <legend>{group.title}</legend>
+              <p className="finance-group-description">{group.description}</p>
 
-      {submitted && (
-        <p style={{ color: 'green', marginTop: 12 }}>
-          ✅ Your financial data has been submitted successfully.
-        </p>
-      )}
-    </form>
+              {group.fields.map((fieldName) => {
+                const field = FINANCIAL_FIELDS.find(({ name }) => name === fieldName)!;
+                const error = errors[field.name];
+
+                return (
+                  <div className="finance-field" key={field.name}>
+                    <label htmlFor={field.name}>{field.label}</label>
+                    <span className="finance-field-hint" id={`${field.name}-hint`}>{field.hint}</span>
+                    <div className="finance-input-wrap">
+                      <span aria-hidden="true" className="finance-currency-symbol">$</span>
+                      <input
+                        id={field.name}
+                        type="number"
+                        inputMode="decimal"
+                        autoComplete="off"
+                        step="any"
+                        min={-MAX_FINANCIAL_AMOUNT}
+                        max={MAX_FINANCIAL_AMOUNT}
+                        aria-describedby={`${field.name}-hint${error ? ` ${field.name}-error` : ''}`}
+                        aria-invalid={Boolean(error)}
+                        {...register(field.name, {
+                          required: 'Enter an amount, or enter 0 if it does not apply.',
+                          valueAsNumber: true,
+                          min: { value: -MAX_FINANCIAL_AMOUNT, message: 'Amount is outside the allowed range.' },
+                          max: { value: MAX_FINANCIAL_AMOUNT, message: 'Amount is outside the allowed range.' },
+                          validate: (value) => Number.isFinite(value) || 'Enter a valid number.',
+                        })}
+                      />
+                    </div>
+                    {error && (
+                      <span className="finance-field-error" id={`${field.name}-error`}>
+                        {error.message || 'Enter a valid amount.'}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </fieldset>
+          ))}
+        </div>
+
+        <div className="finance-form-footer">
+          <button className="finance-submit-button" type="submit" disabled={isSubmitting || isLoadingPrevious}>
+            {isSubmitting && <span className="finance-spinner" aria-hidden="true" />}
+            {isSubmitting ? 'Saving update…' : 'Save financial update'}
+          </button>
+          <p className="finance-form-note">A new dated snapshot is added to your financial history.</p>
+        </div>
+
+        {message && (
+          <p
+            className={`finance-form-message finance-form-message-${messageType}`}
+            role={messageType === 'error' ? 'alert' : 'status'}
+          >
+            {message}
+          </p>
+        )}
+      </form>
+    </section>
   );
 };
 
