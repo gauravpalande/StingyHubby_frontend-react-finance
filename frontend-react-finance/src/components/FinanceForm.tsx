@@ -88,9 +88,17 @@ const FinanceForm: React.FC = () => {
         return;
       }
 
-      const previousValues = Object.fromEntries(
-        FINANCIAL_FIELDS.map(({ name }) => [name, Number(data[name]) || 0])
-      ) as FormData;
+      const previousValues: FormData = {
+        income: Number(data.income) || 0,
+        checking: Number(data.checking) || 0,
+        emergency: Number(data.emergency) || 0,
+        health: Number(data.health) || 0,
+        retirement: Number(data.retirement) || 0,
+        creditCards: Number(data.creditCards) || 0,
+        mortgage: Number(data.mortgage) || 0,
+        carPayments: Number(data.carPayments) || 0,
+        utilities: Number(data.utilities) || 0,
+      };
 
       reset(previousValues);
       setMessageType('success');
