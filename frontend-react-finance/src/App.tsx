@@ -7,7 +7,6 @@ import FinanceForm from "./components/FinanceForm";
 import HomePage from "./pages/HomePage";
 import AboutPage from "./pages/AboutPage";
 import UpdateFinancesPage from "./pages/UpdateFinancesPage";
-import GPTSuggestionPage from "./pages/GPTSuggestionPage";
 import FinancialDashboardPage from "./pages/FinancialDashboardPage";
 import EditableFinancialHistory from "./components/EditableFinancialHistory";
 import PreferencesPage from "./pages/PreferencesPage";
@@ -57,7 +56,7 @@ const App: React.FC = () => {
           <Route path="update" element={<UpdateFinancesPage />} />
           <Route path="history" element={<EditableFinancialHistory />} />
           <Route path="breakdown" element={<Navigate to="/app/dashboard" replace />} />
-          <Route path="suggestions" element={<GPTSuggestionPage />} />
+          <Route path="suggestions" element={<Navigate to="/app/dashboard" replace />} />
           <Route path="preferences" element={<PreferencesPage />} />
           <Route path="feedback" element={<FeedbackForm />} />
           <Route path="about" element={<AboutPage />} />

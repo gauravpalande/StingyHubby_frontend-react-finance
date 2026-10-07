@@ -248,13 +248,6 @@ const FinancialDashboardPage: React.FC = () => {
     [goals, submissions]
   );
 
-  const latestSuggestion =
-    latest?.oneline_suggestion ||
-    latest?.short_term_suggestion ||
-    latest?.goal_suggestion ||
-    latest?.long_term_suggestion ||
-    '';
-
   if (loading) {
     return <p>Loading dashboard...</p>;
   }
@@ -324,6 +317,13 @@ const FinancialDashboardPage: React.FC = () => {
     { name: 'Credit cards', value: toAmount(latest.creditCards) },
   ];
 
+  const gptSuggestions = [
+    { label: 'Quick summary', value: latest.oneline_suggestion },
+    { label: 'Short-term', value: latest.short_term_suggestion },
+    { label: 'Long-term', value: latest.long_term_suggestion },
+    { label: 'Goals', value: latest.goal_suggestion },
+  ].filter((suggestion) => Boolean(suggestion.value?.trim()));
+
   return (
     <div style={dashboardShell}>
       <div style={{ marginBottom: 24 }}>
@@ -375,12 +375,17 @@ const FinancialDashboardPage: React.FC = () => {
           <h3 style={{ marginTop: 0 }}>Automated Advice</h3>
           <strong>{advice?.title}</strong>
           <p style={{ color: '#475569' }}>{advice?.body}</p>
-          {latestSuggestion && (
-            <>
-              <h4 style={{ marginBottom: 6 }}>Latest AI Suggestion</h4>
-              <p style={{ color: '#475569', marginBottom: 0 }}>{latestSuggestion}</p>
-            </>
-          )}
+          <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid #e5e7eb' }}>
+            <h4 style={{ margin: '0 0 10px' }}>AI Financial Suggestions</h4>
+            {gptSuggestions.length ? gptSuggestions.map(({ label, value }) => (
+              <div key={label} style={{ marginTop: 12 }}>
+                <h5 style={{ margin: '0 0 4px', color: '#334155', fontSize: 14 }}>{label}</h5>
+                <p style={{ margin: 0, color: '#475569', lineHeight: 1.5 }}>{value}</p>
+              </div>
+            )) : (
+              <p style={{ margin: 0, color: '#64748b' }}>No AI suggestions have been generated for this snapshot yet.</p>
+            )}
+          </div>
         </div>
       </section>
 
