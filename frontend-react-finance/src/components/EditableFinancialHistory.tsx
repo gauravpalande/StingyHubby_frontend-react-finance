@@ -1,25 +1,21 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSupabaseClient, useUser } from '@supabase/auth-helpers-react';
 import {
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  BarChart,
   Bar,
+  BarChart,
   CartesianGrid,
+  Legend,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  Tooltip,
-  Legend,
 } from 'recharts';
-import {
-  buildImportedSubmissions,
-  MAX_IMPORT_FILE_BYTES,
-} from '../utils/csvImport';
+import { buildImportedSubmissions, MAX_IMPORT_FILE_BYTES } from '../utils/csvImport';
+import './EditableFinancialHistory.css';
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#A28BD4', '#F29C1F', '#57D9A3', '#FF6B6B'];
-
-type ImportNumericField =
+type FinanceField =
   | 'income'
   | 'checking'
   | 'emergency'
@@ -30,266 +26,480 @@ type ImportNumericField =
   | 'carPayments'
   | 'utilities';
 
-type FinancialHistoryRecord = Record<ImportNumericField, number | null> & {
+type HistoryRecord = Record<FinanceField, number | null> & {
   id: string;
   created_at: string;
 };
 
-type FinancialHistoryRow = FinancialHistoryRecord & {
-  timestamp: string;
+type HistoryRow = HistoryRecord & { timestamp: string };
+type EditingState = Record<string, Partial<Record<FinanceField, number | ''>>>;
+type ChartMode = 'cashFlow' | 'balances';
+
+const FINANCE_FIELDS: readonly { key: FinanceField; label: string }[] = [
+  { key: 'income', label: 'Income' },
+  { key: 'checking', label: 'Checking' },
+  { key: 'emergency', label: 'Emergency' },
+  { key: 'health', label: 'Health' },
+  { key: 'retirement', label: 'Retirement' },
+  { key: 'creditCards', label: 'Credit cards' },
+  { key: 'mortgage', label: 'Mortgage' },
+  { key: 'carPayments', label: 'Car payments' },
+  { key: 'utilities', label: 'Utilities' },
+];
+
+const CASH_FLOW_COLORS = { income: '#2563eb', expenses: '#dc2626', netCashFlow: '#059669' };
+const BALANCE_COLORS = {
+  checking: '#0f766e',
+  emergency: '#2563eb',
+  retirement: '#7c3aed',
+  health: '#ea580c',
 };
 
-type EditingState = Record<string, Partial<Record<ImportNumericField, number>>>;
+const currencyFormatter = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+  maximumFractionDigits: 0,
+});
 
-const CHART_KEYS: ImportNumericField[] = [
-  'income',
-  'checking',
-  'emergency',
-  'health',
-  'retirement',
-  'creditCards',
-  'mortgage',
-  'carPayments',
-  'utilities',
-];
+const compactCurrencyFormatter = new Intl.NumberFormat('en-US', {
+  notation: 'compact',
+  maximumFractionDigits: 0,
+});
+
+function amount(value: number | null | undefined) {
+  return Number(value) || 0;
+}
+
+function formatDate(value: string) {
+  return new Date(value).toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
 
 const EditableFinancialHistory: React.FC = () => {
   const supabase = useSupabaseClient();
   const user = useUser();
-  const [history, setHistory] = useState<FinancialHistoryRow[]>([]);
+  const [history, setHistory] = useState<HistoryRow[]>([]);
   const [editing, setEditing] = useState<EditingState>({});
+  const [editingRowId, setEditingRowId] = useState<string | null>(null);
+  const [busyRowId, setBusyRowId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [chartType, setChartType] = useState<'line' | 'bar'>('line');
-  const [importStatus, setImportStatus] = useState('');
-  const printRef = useRef<HTMLDivElement>(null);
+  const [chartMode, setChartMode] = useState<ChartMode>('cashFlow');
+  const [status, setStatus] = useState('');
+  const [statusIsError, setStatusIsError] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const fetchHistory = async () => {
-    if (!user) return;
-    setLoading(true);
-
-    const [historyRes, prefsRes] = await Promise.all([
-      supabase
-        .from('submissions')
-        .select(
-          'id, created_at, income, checking, emergency, health, retirement, creditCards, mortgage, carPayments, utilities'
-        )
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(1000),
-      supabase
-        .from('preferences')
-        .select('graph_type')
-        .eq('user_id', user.id)
-        .single(),
-    ]);
-
-    if (historyRes.data) {
-      setHistory(
-        (historyRes.data as FinancialHistoryRecord[]).slice().reverse().map((row) => ({
-          ...row,
-          timestamp: new Date(row.created_at).toLocaleDateString(),
-        }))
-      );
+  const fetchHistory = useCallback(async (showLoading = true) => {
+    if (!user) {
+      setHistory([]);
+      setLoading(false);
+      return;
     }
 
-    if (prefsRes.data?.graph_type === 'bar') setChartType('bar');
-    else setChartType('line');
+    if (showLoading) setLoading(true);
+    setLoadError('');
 
-    setLoading(false);
-  };
+    try {
+      const [historyResult, preferencesResult] = await Promise.all([
+        supabase
+          .from('submissions')
+          .select('id, created_at, income, checking, emergency, health, retirement, creditCards, mortgage, carPayments, utilities')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1000),
+        supabase
+          .from('preferences')
+          .select('graph_type')
+          .eq('user_id', user.id)
+          .maybeSingle(),
+      ]);
+
+      if (historyResult.error) throw historyResult.error;
+
+      setHistory(((historyResult.data ?? []) as HistoryRecord[]).map((row) => ({
+        ...row,
+        timestamp: formatDate(row.created_at),
+      })));
+
+      if (preferencesResult.data?.graph_type === 'bar') setChartType('bar');
+      else setChartType('line');
+    } catch (error) {
+      console.error('Error loading financial history:', error);
+      setLoadError('Your financial history could not be loaded. Please try again.');
+    } finally {
+      if (showLoading) setLoading(false);
+    }
+  }, [supabase, user]);
 
   useEffect(() => {
-    fetchHistory();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+    void fetchHistory();
+  }, [fetchHistory]);
 
-  const updateRow = (id: string, field: ImportNumericField, value: string) => {
-    setEditing((prev) => ({
-      ...prev,
-      [id]: { ...prev[id], [field]: parseFloat(value) },
+  const chartData = useMemo(() => history.slice().reverse().map((row) => {
+    const expenses = amount(row.creditCards) + amount(row.mortgage) + amount(row.carPayments) + amount(row.utilities);
+    return {
+      date: row.timestamp,
+      income: amount(row.income),
+      expenses,
+      netCashFlow: amount(row.income) - expenses,
+      checking: amount(row.checking),
+      emergency: amount(row.emergency),
+      health: amount(row.health),
+      retirement: amount(row.retirement),
+    };
+  }), [history]);
+
+  const latest = history[0];
+  const latestExpenses = latest
+    ? amount(latest.creditCards) + amount(latest.mortgage) + amount(latest.carPayments) + amount(latest.utilities)
+    : 0;
+  const latestSavings = latest
+    ? amount(latest.emergency) + amount(latest.health) + amount(latest.retirement)
+    : 0;
+
+  const summaryCards = [
+    { label: 'Snapshots shown', value: history.length.toLocaleString(), note: 'Most recent records' },
+    { label: 'Monthly income', value: latest ? currencyFormatter.format(amount(latest.income)) : '—', note: latest ? `Latest · ${latest.timestamp}` : 'No saved updates' },
+    { label: 'Monthly expenses', value: latest ? currencyFormatter.format(latestExpenses) : '—', note: 'From your latest snapshot' },
+    { label: 'Savings balances', value: latest ? currencyFormatter.format(latestSavings) : '—', note: 'Emergency, health & retirement' },
+  ];
+
+  const updateRow = (id: string, field: FinanceField, value: string) => {
+    setEditing((current) => ({
+      ...current,
+      [id]: { ...current[id], [field]: value === '' ? undefined : Number(value) },
     }));
+  };
+
+  const cancelEdit = (id: string) => {
+    setEditing((current) => {
+      const next = { ...current };
+      delete next[id];
+      return next;
+    });
+    setEditingRowId(null);
+    setStatus('');
   };
 
   const saveRow = async (id: string) => {
     const changes = editing[id];
-    if (!changes) return;
+    if (!changes || !Object.keys(changes).length) {
+      setEditingRowId(null);
+      return;
+    }
+    if (Object.values(changes).some((value) => typeof value !== 'number' || !Number.isFinite(value))) {
+      setStatus('Enter a valid number in each edited field.');
+      setStatusIsError(true);
+      return;
+    }
 
-    const { error } = await supabase.from('submissions').update(changes).eq('id', id);
+    setBusyRowId(id);
+    setStatus('');
+    try {
+      const { error } = await supabase.from('submissions').update(changes).eq('id', id);
+      if (error) throw error;
 
-    if (!error) {
-      const newEditing = { ...editing };
-      delete newEditing[id];
-      setEditing(newEditing);
-      fetchHistory();
-    } else {
-      console.error('Error saving row:', error.message);
+      cancelEdit(id);
+      setStatus('History row updated.');
+      setStatusIsError(false);
+      await fetchHistory(false);
+    } catch (error) {
+      console.error('Error saving history row:', error);
+      setStatus('Could not save this row. Please try again.');
+      setStatusIsError(true);
+    } finally {
+      setBusyRowId(null);
     }
   };
 
-  const deleteRow = async (id: string) => {
-    const { error } = await supabase.from('submissions').delete().eq('id', id);
-    if (!error) fetchHistory();
-    else console.error('Error deleting row:', error.message);
+  const deleteRow = async (row: HistoryRow) => {
+    if (!window.confirm(`Delete the financial snapshot from ${row.timestamp}? This cannot be undone.`)) return;
+
+    setBusyRowId(row.id);
+    setStatus('');
+    try {
+      const { error } = await supabase.from('submissions').delete().eq('id', row.id);
+      if (error) throw error;
+
+      if (editingRowId === row.id) cancelEdit(row.id);
+      await fetchHistory(false);
+      setStatus('History row deleted.');
+      setStatusIsError(false);
+    } catch (error) {
+      console.error('Error deleting history row:', error);
+      setStatus('Could not delete this row. Please try again.');
+      setStatusIsError(true);
+    } finally {
+      setBusyRowId(null);
+    }
   };
 
   const exportToCSV = () => {
     if (!history.length) return;
 
-    const headers = ['Date', 'Income', 'Checking', 'Emergency', 'Health', 'Retirement', 'Credit Cards', 'Mortgage', 'Car Payments', 'Utilities'];
-    const rows = history.map((row) =>
-      [
-        row.timestamp,
-        row.income,
-        row.checking,
-        row.emergency,
-        row.health,
-        row.retirement,
-        row.creditCards,
-        row.mortgage,
-        row.carPayments,
-        row.utilities,
-      ].join(',')
-    );
+    const headers = ['Date', ...FINANCE_FIELDS.map(({ label }) => label)];
+    const rows = history.map((row) => [
+      new Date(row.created_at).toISOString().slice(0, 10),
+      ...FINANCE_FIELDS.map(({ key }) => amount(row[key])),
+    ].join(','));
 
-    const csvContent = [headers.join(','), ...rows].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const blob = new Blob([[headers.join(','), ...rows].join('\n')], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
-
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'financial_history.csv';
-    a.click();
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'financial_history.csv';
+    link.click();
     URL.revokeObjectURL(url);
   };
 
   const importFromCSV = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = '';
-
     if (!file || !user) return;
 
     try {
-      if (file.size > MAX_IMPORT_FILE_BYTES) {
-        throw new Error('CSV files must be 1 MB or smaller.');
-      }
+      if (file.size > MAX_IMPORT_FILE_BYTES) throw new Error('CSV files must be 1 MB or smaller.');
 
-      setImportStatus('Importing CSV...');
-      const csv = await file.text();
-      const rows = buildImportedSubmissions(csv, user.id);
-
-      if (!rows.length) {
-        throw new Error('CSV file does not contain any data rows.');
-      }
+      setStatus('Importing financial history…');
+      setStatusIsError(false);
+      const rows = buildImportedSubmissions(await file.text(), user.id);
+      if (!rows.length) throw new Error('CSV file does not contain any data rows.');
 
       const { error } = await supabase.from('submissions').insert(rows);
+      if (error) throw new Error(error.message);
 
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      setImportStatus(`Imported ${rows.length} financial history row${rows.length === 1 ? '' : 's'}.`);
-      fetchHistory();
+      await fetchHistory(false);
+      setStatus(`Imported ${rows.length} financial history ${rows.length === 1 ? 'row' : 'rows'}.`);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'CSV import failed.';
-      setImportStatus(message);
+      setStatus(message);
+      setStatusIsError(true);
     }
   };
 
-  const exportToPDF = () => {
-    if (!printRef.current) return;
-    const originalContent = document.body.innerHTML;
-    const printContent = printRef.current.innerHTML;
+  if (loading) {
+    return (
+      <div className="financial-history-page" style={{ maxWidth: 1200, margin: '0 auto' }}>
+        <p className="history-loading" role="status">Loading your financial history…</p>
+      </div>
+    );
+  }
 
-    document.body.innerHTML = printContent;
-    window.print();
-    document.body.innerHTML = originalContent;
-    window.location.reload();
-  };
+  if (loadError) {
+    return (
+      <div className="financial-history-page history-error-card" style={{ maxWidth: 1200, margin: '0 auto' }} role="alert">
+        <h1>Financial history</h1>
+        <p>{loadError}</p>
+        <button className="history-button history-button-primary" type="button" onClick={() => void fetchHistory()}>
+          Try again
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <div style={{ marginTop: 40 }} ref={printRef}>
-      <h3>Financial History</h3>
+    <div className="financial-history-page">
+      <header className="history-page-header">
+        <div>
+          <span className="history-eyebrow">YOUR FINANCES OVER TIME</span>
+          <h1>Financial history</h1>
+          <p>Review trends, edit a snapshot, or import and export your records.</p>
+        </div>
+        <div className="history-header-meta">
+          <span className="history-record-count">{history.length.toLocaleString()} {history.length === 1 ? 'record' : 'records'}</span>
+          {latest && <span>Latest update · {latest.timestamp}</span>}
+        </div>
+      </header>
 
-      <div style={{ marginBottom: 16 }}>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".csv,text/csv"
-          onChange={importFromCSV}
-          style={{ display: 'none' }}
-        />
-        <button onClick={exportToCSV}>📁 Export CSV</button>
-        <button onClick={exportToPDF} style={{ marginLeft: 10 }}>🖨 Export PDF</button>
-        <button onClick={() => fileInputRef.current?.click()} style={{ marginLeft: 10 }}>Import CSV</button>
-        {importStatus && <div style={{ marginTop: 8, color: '#4a5568' }}>{importStatus}</div>}
-      </div>
+      <section className="history-summary-grid" aria-label="Latest financial summary">
+        {summaryCards.map((card) => (
+          <article className="history-summary-card" key={card.label}>
+            <span className="history-summary-label">{card.label}</span>
+            <strong className="history-summary-value">{card.value}</strong>
+            <span className="history-summary-note">{card.note}</span>
+          </article>
+        ))}
+      </section>
 
-      {loading ? (
-        <p>📊 Loading chart data...</p>
-      ) : history.length === 0 ? (
-        <p>No data to display.</p>
-      ) : (
-        <ResponsiveContainer width="100%" height={300}>
-          {chartType === 'bar' ? (
-            <BarChart data={history}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="timestamp" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              {CHART_KEYS.map((key, index) => (
-                <Bar key={key} dataKey={key} fill={COLORS[index % COLORS.length]} />
-              ))}
-            </BarChart>
-          ) : (
-            <LineChart data={history}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="timestamp" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              {CHART_KEYS.map((key, index) => (
-                <Line key={key} type="monotone" dataKey={key} stroke={COLORS[index % COLORS.length]} />
-              ))}
-            </LineChart>
+      <section className="history-card history-tools-card" aria-label="History file tools">
+        <div>
+          <h2>Manage your records</h2>
+          <p>Move your snapshots in or out of PennyWize.</p>
+        </div>
+        <input ref={fileInputRef} type="file" accept=".csv,text/csv" onChange={importFromCSV} hidden />
+        <div className="history-file-actions">
+          <button className="history-button history-button-primary" type="button" onClick={() => fileInputRef.current?.click()}>
+            Import CSV
+          </button>
+          <button className="history-button" type="button" onClick={exportToCSV} disabled={!history.length}>
+            Export CSV
+          </button>
+          <button className="history-button" type="button" onClick={() => window.print()}>
+            Export PDF
+          </button>
+        </div>
+        {status && (
+          <p className={`history-status ${statusIsError ? 'history-status-error' : ''}`} role={statusIsError ? 'alert' : 'status'}>
+            {status}
+          </p>
+        )}
+      </section>
+
+      <section className="history-card history-chart-card" aria-labelledby="history-trend-title">
+        <div className="history-card-header history-chart-header">
+          <div>
+            <h2 id="history-trend-title">Trends over time</h2>
+            <p>{chartMode === 'cashFlow' ? 'Compare income, expenses, and net cash flow.' : 'Track changes in your account and savings balances.'}</p>
+          </div>
+          {history.length > 0 && (
+            <div className="history-chart-controls" aria-label="Chart controls">
+              <div className="history-segmented-control" role="group" aria-label="Choose metrics">
+                <button type="button" aria-pressed={chartMode === 'cashFlow'} onClick={() => setChartMode('cashFlow')}>Cash flow</button>
+                <button type="button" aria-pressed={chartMode === 'balances'} onClick={() => setChartMode('balances')}>Balances</button>
+              </div>
+              <div className="history-segmented-control" role="group" aria-label="Choose chart style">
+                <button type="button" aria-pressed={chartType === 'line'} onClick={() => setChartType('line')}>Line</button>
+                <button type="button" aria-pressed={chartType === 'bar'} onClick={() => setChartType('bar')}>Bar</button>
+              </div>
+            </div>
           )}
-        </ResponsiveContainer>
-      )}
+        </div>
 
-      {!loading && history.length > 0 && (
-        <table style={{ width: '100%', marginTop: 24, borderCollapse: 'collapse' }}>
-          <thead>
-            <tr>
-              <th>Date</th>
-              {CHART_KEYS.map((key) => (
-                <th key={key}>{key.charAt(0).toUpperCase() + key.slice(1)}</th>
-              ))}
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {history.map((row) => (
-              <tr key={row.id}>
-                <td>{row.timestamp}</td>
-                {CHART_KEYS.map((key) => (
-                  <td key={key}>
-                    <input
-                      type="number"
-                      value={(editing[row.id]?.[key] ?? row[key]) || 0}
-                      onChange={(e) => updateRow(row.id, key, e.target.value)}
-                    />
-                  </td>
-                ))}
-                <td>
-                  <button onClick={() => saveRow(row.id)} title="Save changes">💾</button>
-                  <button onClick={() => deleteRow(row.id)} title="Delete entry" style={{ marginLeft: 8 }}>🗑️</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+        {history.length ? (
+          <div className="history-chart-wrap">
+            <ResponsiveContainer width="100%" height={320}>
+              {chartType === 'bar' ? (
+                <BarChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                  <CartesianGrid stroke="#e8edf1" strokeDasharray="4 4" vertical={false} />
+                  <XAxis dataKey="date" minTickGap={32} tick={{ fill: '#687583', fontSize: 12 }} tickLine={false} axisLine={{ stroke: '#dce3e8' }} />
+                  <YAxis tickFormatter={(value) => compactCurrencyFormatter.format(Number(value))} tick={{ fill: '#687583', fontSize: 12 }} tickLine={false} axisLine={false} width={58} />
+                  <Tooltip formatter={(value) => currencyFormatter.format(Number(value))} contentStyle={{ borderRadius: 10, borderColor: '#dce3e8' }} />
+                  <Legend />
+                  {chartMode === 'cashFlow' ? (
+                    <>
+                      <Bar dataKey="income" name="Income" fill={CASH_FLOW_COLORS.income} radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="expenses" name="Expenses" fill={CASH_FLOW_COLORS.expenses} radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="netCashFlow" name="Net cash flow" fill={CASH_FLOW_COLORS.netCashFlow} radius={[4, 4, 0, 0]} />
+                    </>
+                  ) : (
+                    <>
+                      <Bar dataKey="checking" name="Checking" fill={BALANCE_COLORS.checking} radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="emergency" name="Emergency" fill={BALANCE_COLORS.emergency} radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="retirement" name="Retirement" fill={BALANCE_COLORS.retirement} radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="health" name="Health" fill={BALANCE_COLORS.health} radius={[4, 4, 0, 0]} />
+                    </>
+                  )}
+                </BarChart>
+              ) : (
+                <LineChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                  <CartesianGrid stroke="#e8edf1" strokeDasharray="4 4" vertical={false} />
+                  <XAxis dataKey="date" minTickGap={32} tick={{ fill: '#687583', fontSize: 12 }} tickLine={false} axisLine={{ stroke: '#dce3e8' }} />
+                  <YAxis tickFormatter={(value) => compactCurrencyFormatter.format(Number(value))} tick={{ fill: '#687583', fontSize: 12 }} tickLine={false} axisLine={false} width={58} />
+                  <Tooltip formatter={(value) => currencyFormatter.format(Number(value))} contentStyle={{ borderRadius: 10, borderColor: '#dce3e8' }} />
+                  <Legend />
+                  {chartMode === 'cashFlow' ? (
+                    <>
+                      <Line type="monotone" dataKey="income" name="Income" stroke={CASH_FLOW_COLORS.income} strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} />
+                      <Line type="monotone" dataKey="expenses" name="Expenses" stroke={CASH_FLOW_COLORS.expenses} strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} />
+                      <Line type="monotone" dataKey="netCashFlow" name="Net cash flow" stroke={CASH_FLOW_COLORS.netCashFlow} strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} />
+                    </>
+                  ) : (
+                    <>
+                      <Line type="monotone" dataKey="checking" name="Checking" stroke={BALANCE_COLORS.checking} strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} />
+                      <Line type="monotone" dataKey="emergency" name="Emergency" stroke={BALANCE_COLORS.emergency} strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} />
+                      <Line type="monotone" dataKey="retirement" name="Retirement" stroke={BALANCE_COLORS.retirement} strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} />
+                      <Line type="monotone" dataKey="health" name="Health" stroke={BALANCE_COLORS.health} strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} />
+                    </>
+                  )}
+                </LineChart>
+              )}
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <div className="history-empty-state">
+            <span className="history-empty-icon" aria-hidden="true">↗</span>
+            <h3>Your history will appear here</h3>
+            <p>Save a financial update or import a CSV to start tracking your trends.</p>
+            <button className="history-button history-button-primary" type="button" onClick={() => fileInputRef.current?.click()}>
+              Import a CSV
+            </button>
+          </div>
+        )}
+      </section>
+
+      <section className="history-card history-table-card" aria-labelledby="history-records-title">
+        <div className="history-card-header">
+          <div>
+            <h2 id="history-records-title">All snapshots</h2>
+            <p>Edit a row to update its values. Your latest snapshot appears first.</p>
+          </div>
+          <span className="history-table-count">{history.length.toLocaleString()} shown</span>
+        </div>
+
+        {history.length ? (
+          <div className="history-table-scroll" role="region" aria-label="Financial snapshots table" tabIndex={0}>
+            <table className="history-table">
+              <thead>
+                <tr>
+                  <th scope="col">Date</th>
+                  {FINANCE_FIELDS.map(({ key, label }) => <th scope="col" key={key}>{label}</th>)}
+                  <th className="history-actions-heading" scope="col">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {history.map((row) => {
+                  const isEditing = editingRowId === row.id;
+                  const isBusy = busyRowId === row.id;
+
+                  return (
+                    <tr key={row.id} className={isEditing ? 'history-row-editing' : undefined}>
+                      <th className="history-date-cell" scope="row">{row.timestamp}</th>
+                      {FINANCE_FIELDS.map(({ key, label }) => (
+                        <td key={key}>
+                          {isEditing ? (
+                            <input
+                              type="number"
+                              inputMode="decimal"
+                              step="any"
+                              aria-label={`${label} on ${row.timestamp}`}
+                              value={editing[row.id]?.[key] ?? amount(row[key])}
+                              onChange={(event) => updateRow(row.id, key, event.target.value)}
+                              disabled={isBusy}
+                            />
+                          ) : (
+                            <span className="history-amount">{currencyFormatter.format(amount(row[key]))}</span>
+                          )}
+                        </td>
+                      ))}
+                      <td className="history-row-actions">
+                        {isEditing ? (
+                          <>
+                            <button className="history-row-button history-row-save" type="button" onClick={() => void saveRow(row.id)} disabled={isBusy}>
+                              {isBusy ? 'Saving…' : 'Save'}
+                            </button>
+                            <button className="history-row-button" type="button" onClick={() => cancelEdit(row.id)} disabled={isBusy}>Cancel</button>
+                          </>
+                        ) : (
+                          <>
+                            <button className="history-row-button" type="button" onClick={() => { setEditingRowId(row.id); setStatus(''); }} disabled={Boolean(busyRowId) || Boolean(editingRowId)}>Edit</button>
+                            <button className="history-row-button history-row-delete" type="button" onClick={() => void deleteRow(row)} disabled={Boolean(busyRowId) || Boolean(editingRowId)}>Delete</button>
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="history-table-empty">No snapshots to show yet.</p>
+        )}
+      </section>
     </div>
   );
 };
