@@ -313,6 +313,33 @@
   border-radius: 50%;
 }
 
+.history-line-reveal {
+  animation: history-line-draw 1.5s ease both;
+}
+
+.history-bar-rise {
+  transform-box: fill-box;
+  animation: history-bar-grow 1.5s ease both;
+}
+
+@keyframes history-line-draw {
+  from { width: 0; }
+  to { width: 916px; }
+}
+
+@keyframes history-bar-grow {
+  from { transform: scaleY(0); opacity: 0.35; }
+  to { transform: scaleY(1); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .history-line-reveal,
+  .history-bar-rise {
+    animation-duration: 0.01ms;
+    animation-delay: 0ms !important;
+  }
+}
+
 .history-empty-state {
   display: flex;
   min-height: 260px;

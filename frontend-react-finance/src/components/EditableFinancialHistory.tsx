@@ -55,6 +55,7 @@ type ChartDatum = {
 };
 
 function FinancialTrendPlot({ data, mode, type }: { data: ChartDatum[]; mode: ChartMode; type: 'line' | 'bar' }) {
+  const plotId = React.useId().replace(/:/g, '');
   const series = mode === 'cashFlow'
     ? [
         { key: 'income' as const, label: 'Income', color: CASH_FLOW_COLORS.income },
@@ -92,6 +93,13 @@ function FinancialTrendPlot({ data, mode, type }: { data: ChartDatum[]; mode: Ch
         ))}
       </div>
       <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`${mode === 'cashFlow' ? 'Cash flow' : 'Account balances'} ${type === 'line' ? 'trends' : 'bars'} over time`} preserveAspectRatio="none">
+        {type === 'line' && (
+          <defs>
+            <clipPath id={`${plotId}-reveal`}>
+              <rect className="history-line-reveal" x={plot.left} y={plot.top} width={plot.right - plot.left} height={plot.bottom - plot.top} />
+            </clipPath>
+          </defs>
+        )}
         {ticks.map((tick) => (
           <g key={tick}>
             <line x1={plot.left} x2={plot.right} y1={y(tick)} y2={y(tick)} stroke="#e8edf1" strokeDasharray="4 4" />
@@ -108,12 +116,14 @@ function FinancialTrendPlot({ data, mode, type }: { data: ChartDatum[]; mode: Ch
           const points = data.map((point, index) => `${x(index)},${y(point[key])}`).join(' ');
           return (
             <g key={key}>
-              <polyline points={points} fill="none" stroke={color} strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+              <g clipPath={`url(#${plotId}-reveal)`}>
+                <polyline points={points} fill="none" stroke={color} strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
               {data.map((point, index) => (
                 <circle key={`${key}-${index}`} cx={x(index)} cy={y(point[key])} r="3" fill="#fff" stroke={color} strokeWidth="2" vectorEffect="non-scaling-stroke">
                   <title>{`${label} · ${point.date}: ${currencyFormatter.format(point[key])}`}</title>
                 </circle>
               ))}
+              </g>
             </g>
           );
         }) : (() => {
@@ -133,6 +143,11 @@ function FinancialTrendPlot({ data, mode, type }: { data: ChartDatum[]; mode: Ch
                 height={barHeight}
                 rx="2"
                 fill={color}
+                className="history-bar-rise"
+                style={{
+                  animationDelay: `${Math.min(index * 24, 720)}ms`,
+                  transformOrigin: `center ${point[key] >= 0 ? '100%' : '0%'}`,
+                }}
               >
                 <title>{`${label} · ${point.date}: ${currencyFormatter.format(point[key])}`}</title>
               </rect>
@@ -460,7 +475,7 @@ const EditableFinancialHistory: React.FC = () => {
 
         {history.length ? (
           <div className="history-chart-wrap">
-            <FinancialTrendPlot data={chartData} mode={chartMode} type={chartType} />
+            <FinancialTrendPlot key={`${chartType}-${chartMode}`} data={chartData} mode={chartMode} type={chartType} />
           </div>
         ) : (
           <div className="history-empty-state">
