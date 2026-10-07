@@ -53,7 +53,17 @@ const readmeHighlights = [
   {
     title: 'Reporting Dashboard',
     description:
-      'The app summarizes financial health, cash-flow trends, savings buckets, goals, and AI suggestions into a single dashboard for automated tracking and advising.',
+      'The dashboard brings together cash-flow trends, savings buckets, goal progress, an expense breakdown chart, automated financial advice, and short-term, long-term, goal-based, and summary AI suggestions.',
+  },
+  {
+    title: 'Financial History Trends',
+    description:
+      'Review and edit dated financial snapshots, import or export records, and compare balances or cash flow with animated line and bar charts.',
+  },
+  {
+    title: 'Simplified Navigation',
+    description:
+      'Expense breakdowns and GPT suggestions are available directly on the financial dashboard, keeping the main navigation focused on core tasks.',
   },
   {
     title: 'Modern Web Stack',
