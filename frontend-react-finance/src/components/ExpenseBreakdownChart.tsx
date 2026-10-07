@@ -1,5 +1,5 @@
 import React from 'react';
-import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 
 interface ExpenseData {
   name: string;
@@ -33,12 +33,18 @@ const ExpenseBreakdownChart: React.FC<Props> = ({ data }) => {
     <div aria-label="Latest monthly expenses by category">
       <ResponsiveContainer width="100%" height={260}>
         <PieChart>
-          <Tooltip formatter={(value) => currencyFormatter.format(Number(value))} contentStyle={{ borderRadius: 10, borderColor: '#dce3e8' }} />
+          <Tooltip
+            formatter={(value, name) => [
+              `${currencyFormatter.format(Number(value))} · ${((Number(value) / total) * 100).toFixed(1)}%`,
+              name,
+            ]}
+            contentStyle={{ borderRadius: 10, borderColor: '#dce3e8' }}
+          />
           <Pie
             data={expenses}
             dataKey="value"
             nameKey="name"
-            cx="38%"
+            cx="54%"
             cy="50%"
             innerRadius={48}
             outerRadius={88}
@@ -52,17 +58,6 @@ const ExpenseBreakdownChart: React.FC<Props> = ({ data }) => {
               <Cell key={item.name} fill={COLORS[index % COLORS.length]} />
             ))}
           </Pie>
-          <Legend
-            layout="vertical"
-            align="right"
-            verticalAlign="middle"
-            iconType="circle"
-            wrapperStyle={{ fontSize: 12, lineHeight: '1.8', right: 0 }}
-            formatter={(name) => {
-              const item = expenses.find((expense) => expense.name === name);
-              return `${name} · ${currencyFormatter.format(item?.value ?? 0)}`;
-            }}
-          />
         </PieChart>
       </ResponsiveContainer>
       <p style={{ margin: '-2px 0 0', color: '#64748b', fontSize: 13, textAlign: 'center' }}>
