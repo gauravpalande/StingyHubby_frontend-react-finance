@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useSupabaseClient, useUser } from '@supabase/auth-helpers-react';
+import ExpenseBreakdownChart from '../components/ExpenseBreakdownChart';
 import {
   Bar,
   BarChart,
@@ -316,6 +317,13 @@ const FinancialDashboardPage: React.FC = () => {
     },
   ];
 
+  const expenseBreakdown = [
+    { name: 'Mortgage', value: toAmount(latest.mortgage) },
+    { name: 'Car payments', value: toAmount(latest.carPayments) },
+    { name: 'Utilities', value: toAmount(latest.utilities) },
+    { name: 'Credit cards', value: toAmount(latest.creditCards) },
+  ];
+
   return (
     <div style={dashboardShell}>
       <div style={{ marginBottom: 24 }}>
@@ -428,6 +436,12 @@ const FinancialDashboardPage: React.FC = () => {
               <Bar dataKey="health" fill="#ea580c" />
             </BarChart>
           </ResponsiveContainer>
+        </div>
+
+        <div style={cardStyle}>
+          <h3 style={{ marginTop: 0 }}>Expense Breakdown</h3>
+          <p style={{ ...mutedText, marginBottom: 8 }}>Latest snapshot · {new Date(latest.created_at).toLocaleDateString()}</p>
+          <ExpenseBreakdownChart data={expenseBreakdown} />
         </div>
       </section>
     </div>
