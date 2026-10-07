@@ -3,7 +3,7 @@
   --history-muted: #64748b;
   --history-border: #e5e7eb;
   --history-accent: #0f766e;
-  width: min(100%, 1200px);
+  width: min(100%, 1600px);
   margin: 0 auto;
   padding: 4px 0 48px;
   color: var(--history-ink);

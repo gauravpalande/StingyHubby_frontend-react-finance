@@ -360,7 +360,7 @@ const EditableFinancialHistory: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="financial-history-page" style={{ maxWidth: 1200, margin: '0 auto' }}>
+      <div className="financial-history-page" style={{ maxWidth: 1600, margin: '0 auto' }}>
         <p className="history-loading" role="status">Loading your financial history…</p>
       </div>
     );
@@ -368,7 +368,7 @@ const EditableFinancialHistory: React.FC = () => {
 
   if (loadError) {
     return (
-      <div className="financial-history-page history-error-card" style={{ maxWidth: 1200, margin: '0 auto' }} role="alert">
+      <div className="financial-history-page history-error-card" style={{ maxWidth: 1600, margin: '0 auto' }} role="alert">
         <h1>Financial history</h1>
         <p>{loadError}</p>
         <button className="history-button history-button-primary" type="button" onClick={() => void fetchHistory()}>
@@ -448,7 +448,7 @@ const EditableFinancialHistory: React.FC = () => {
 
         {history.length ? (
           <div className="history-chart-wrap">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height={320}>
               {chartType === 'bar' ? (
                 <BarChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
                   <CartesianGrid stroke="#e8edf1" strokeDasharray="4 4" vertical={false} />
@@ -458,16 +458,16 @@ const EditableFinancialHistory: React.FC = () => {
                   <Legend />
                   {chartMode === 'cashFlow' ? (
                     <>
-                      <Bar dataKey="income" name="Income" fill={CASH_FLOW_COLORS.income} radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="expenses" name="Expenses" fill={CASH_FLOW_COLORS.expenses} radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="netCashFlow" name="Net cash flow" fill={CASH_FLOW_COLORS.netCashFlow} radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="income" name="Income" fill={CASH_FLOW_COLORS.income} radius={[4, 4, 0, 0]} isAnimationActive={false} />
+                      <Bar dataKey="expenses" name="Expenses" fill={CASH_FLOW_COLORS.expenses} radius={[4, 4, 0, 0]} isAnimationActive={false} />
+                      <Bar dataKey="netCashFlow" name="Net cash flow" fill={CASH_FLOW_COLORS.netCashFlow} radius={[4, 4, 0, 0]} isAnimationActive={false} />
                     </>
                   ) : (
                     <>
-                      <Bar dataKey="checking" name="Checking" fill={BALANCE_COLORS.checking} radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="emergency" name="Emergency" fill={BALANCE_COLORS.emergency} radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="retirement" name="Retirement" fill={BALANCE_COLORS.retirement} radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="health" name="Health" fill={BALANCE_COLORS.health} radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="checking" name="Checking" fill={BALANCE_COLORS.checking} radius={[4, 4, 0, 0]} isAnimationActive={false} />
+                      <Bar dataKey="emergency" name="Emergency" fill={BALANCE_COLORS.emergency} radius={[4, 4, 0, 0]} isAnimationActive={false} />
+                      <Bar dataKey="retirement" name="Retirement" fill={BALANCE_COLORS.retirement} radius={[4, 4, 0, 0]} isAnimationActive={false} />
+                      <Bar dataKey="health" name="Health" fill={BALANCE_COLORS.health} radius={[4, 4, 0, 0]} isAnimationActive={false} />
                     </>
                   )}
                 </BarChart>
