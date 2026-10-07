@@ -5,8 +5,6 @@ import {
   BarChart,
   CartesianGrid,
   Legend,
-  Line,
-  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -54,6 +52,85 @@ const BALANCE_COLORS = {
   retirement: '#7c3aed',
   health: '#ea580c',
 };
+
+type ChartDatum = {
+  date: string;
+  income: number;
+  expenses: number;
+  netCashFlow: number;
+  checking: number;
+  emergency: number;
+  retirement: number;
+  health: number;
+};
+
+function FinancialLinePlot({ data, mode }: { data: ChartDatum[]; mode: ChartMode }) {
+  const series = mode === 'cashFlow'
+    ? [
+        { key: 'income' as const, label: 'Income', color: CASH_FLOW_COLORS.income },
+        { key: 'expenses' as const, label: 'Expenses', color: CASH_FLOW_COLORS.expenses },
+        { key: 'netCashFlow' as const, label: 'Net cash flow', color: CASH_FLOW_COLORS.netCashFlow },
+      ]
+    : [
+        { key: 'checking' as const, label: 'Checking', color: BALANCE_COLORS.checking },
+        { key: 'emergency' as const, label: 'Emergency', color: BALANCE_COLORS.emergency },
+        { key: 'retirement' as const, label: 'Retirement', color: BALANCE_COLORS.retirement },
+        { key: 'health' as const, label: 'Health', color: BALANCE_COLORS.health },
+      ];
+
+  const width = 1000;
+  const height = 292;
+  const plot = { left: 72, right: 988, top: 16, bottom: 238 };
+  const values = data.flatMap((point) => series.map(({ key }) => point[key])).filter(Number.isFinite);
+  const rawMin = Math.min(0, ...values);
+  const rawMax = Math.max(0, ...values);
+  const range = rawMax - rawMin || 1;
+  const min = rawMin - range * 0.06;
+  const max = rawMax + range * 0.06;
+  const x = (index: number) => plot.left + (data.length < 2 ? 0 : (index / (data.length - 1)) * (plot.right - plot.left));
+  const y = (value: number) => plot.bottom - ((value - min) / (max - min)) * (plot.bottom - plot.top);
+  const ticks = Array.from({ length: 5 }, (_, index) => min + ((max - min) * index) / 4);
+  const dateIndexes = Array.from(new Set(Array.from({ length: Math.min(6, data.length) }, (_, index) =>
+    data.length < 2 ? 0 : Math.round((index * (data.length - 1)) / (Math.min(6, data.length) - 1)),
+  )));
+
+  return (
+    <div className="history-line-plot">
+      <div className="history-line-legend" aria-hidden="true">
+        {series.map(({ key, label, color }) => (
+          <span key={key}><i style={{ backgroundColor: color }} />{label}</span>
+        ))}
+      </div>
+      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`${mode === 'cashFlow' ? 'Cash flow' : 'Account balances'} over time`} preserveAspectRatio="none">
+        {ticks.map((tick) => (
+          <g key={tick}>
+            <line x1={plot.left} x2={plot.right} y1={y(tick)} y2={y(tick)} stroke="#e8edf1" strokeDasharray="4 4" />
+            <text x={plot.left - 10} y={y(tick) + 4} textAnchor="end" fill="#687583" fontSize="12">${compactCurrencyFormatter.format(tick)}</text>
+          </g>
+        ))}
+        <line x1={plot.left} x2={plot.right} y1={plot.bottom} y2={plot.bottom} stroke="#dce3e8" />
+        {dateIndexes.map((index) => (
+          <text key={`${data[index]?.date}-${index}`} x={x(index)} y={height - 8} textAnchor="middle" fill="#687583" fontSize="11">
+            {data[index]?.date}
+          </text>
+        ))}
+        {series.map(({ key, label, color }) => {
+          const points = data.map((point, index) => `${x(index)},${y(point[key])}`).join(' ');
+          return (
+            <g key={key}>
+              <polyline points={points} fill="none" stroke={color} strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+              {data.map((point, index) => (
+                <circle key={`${key}-${index}`} cx={x(index)} cy={y(point[key])} r="3" fill="#fff" stroke={color} strokeWidth="2" vectorEffect="non-scaling-stroke">
+                  <title>{`${label} · ${point.date}: ${currencyFormatter.format(point[key])}`}</title>
+                </circle>
+              ))}
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
 
 const currencyFormatter = new Intl.NumberFormat('en-US', {
   style: 'currency',
@@ -371,7 +448,7 @@ const EditableFinancialHistory: React.FC = () => {
 
         {history.length ? (
           <div className="history-chart-wrap">
-            <ResponsiveContainer width="100%" height={320}>
+            <ResponsiveContainer width="100%" height="100%">
               {chartType === 'bar' ? (
                 <BarChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
                   <CartesianGrid stroke="#e8edf1" strokeDasharray="4 4" vertical={false} />
@@ -395,27 +472,7 @@ const EditableFinancialHistory: React.FC = () => {
                   )}
                 </BarChart>
               ) : (
-                <LineChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-                  <CartesianGrid stroke="#e8edf1" strokeDasharray="4 4" vertical={false} />
-                  <XAxis dataKey="date" minTickGap={32} tick={{ fill: '#687583', fontSize: 12 }} tickLine={false} axisLine={{ stroke: '#dce3e8' }} />
-                  <YAxis tickFormatter={(value) => compactCurrencyFormatter.format(Number(value))} tick={{ fill: '#687583', fontSize: 12 }} tickLine={false} axisLine={false} width={58} />
-                  <Tooltip formatter={(value) => currencyFormatter.format(Number(value))} contentStyle={{ borderRadius: 10, borderColor: '#dce3e8' }} />
-                  <Legend />
-                  {chartMode === 'cashFlow' ? (
-                    <>
-                      <Line type="monotone" dataKey="income" name="Income" stroke={CASH_FLOW_COLORS.income} strokeWidth={3} dot={{ r: 3, strokeWidth: 1, fill: '#fff' }} activeDot={{ r: 6 }} isAnimationActive={false} connectNulls />
-                      <Line type="monotone" dataKey="expenses" name="Expenses" stroke={CASH_FLOW_COLORS.expenses} strokeWidth={3} dot={{ r: 3, strokeWidth: 1, fill: '#fff' }} activeDot={{ r: 6 }} isAnimationActive={false} connectNulls />
-                      <Line type="monotone" dataKey="netCashFlow" name="Net cash flow" stroke={CASH_FLOW_COLORS.netCashFlow} strokeWidth={3} dot={{ r: 3, strokeWidth: 1, fill: '#fff' }} activeDot={{ r: 6 }} isAnimationActive={false} connectNulls />
-                    </>
-                  ) : (
-                    <>
-                      <Line type="monotone" dataKey="checking" name="Checking" stroke={BALANCE_COLORS.checking} strokeWidth={3} dot={{ r: 3, strokeWidth: 1, fill: '#fff' }} activeDot={{ r: 6 }} isAnimationActive={false} connectNulls />
-                      <Line type="monotone" dataKey="emergency" name="Emergency" stroke={BALANCE_COLORS.emergency} strokeWidth={3} dot={{ r: 3, strokeWidth: 1, fill: '#fff' }} activeDot={{ r: 6 }} isAnimationActive={false} connectNulls />
-                      <Line type="monotone" dataKey="retirement" name="Retirement" stroke={BALANCE_COLORS.retirement} strokeWidth={3} dot={{ r: 3, strokeWidth: 1, fill: '#fff' }} activeDot={{ r: 6 }} isAnimationActive={false} connectNulls />
-                      <Line type="monotone" dataKey="health" name="Health" stroke={BALANCE_COLORS.health} strokeWidth={3} dot={{ r: 3, strokeWidth: 1, fill: '#fff' }} activeDot={{ r: 6 }} isAnimationActive={false} connectNulls />
-                    </>
-                  )}
-                </LineChart>
+                <FinancialLinePlot data={chartData} mode={chartMode} />
               )}
             </ResponsiveContainer>
           </div>
