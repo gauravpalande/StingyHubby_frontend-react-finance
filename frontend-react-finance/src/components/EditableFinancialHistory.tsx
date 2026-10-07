@@ -403,16 +403,16 @@ const EditableFinancialHistory: React.FC = () => {
                   <Legend />
                   {chartMode === 'cashFlow' ? (
                     <>
-                      <Line type="monotone" dataKey="income" name="Income" stroke={CASH_FLOW_COLORS.income} strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} />
-                      <Line type="monotone" dataKey="expenses" name="Expenses" stroke={CASH_FLOW_COLORS.expenses} strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} />
-                      <Line type="monotone" dataKey="netCashFlow" name="Net cash flow" stroke={CASH_FLOW_COLORS.netCashFlow} strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} />
+                      <Line type="monotone" dataKey="income" name="Income" stroke={CASH_FLOW_COLORS.income} strokeWidth={3} dot={{ r: 3, strokeWidth: 1, fill: '#fff' }} activeDot={{ r: 6 }} isAnimationActive={false} connectNulls />
+                      <Line type="monotone" dataKey="expenses" name="Expenses" stroke={CASH_FLOW_COLORS.expenses} strokeWidth={3} dot={{ r: 3, strokeWidth: 1, fill: '#fff' }} activeDot={{ r: 6 }} isAnimationActive={false} connectNulls />
+                      <Line type="monotone" dataKey="netCashFlow" name="Net cash flow" stroke={CASH_FLOW_COLORS.netCashFlow} strokeWidth={3} dot={{ r: 3, strokeWidth: 1, fill: '#fff' }} activeDot={{ r: 6 }} isAnimationActive={false} connectNulls />
                     </>
                   ) : (
                     <>
-                      <Line type="monotone" dataKey="checking" name="Checking" stroke={BALANCE_COLORS.checking} strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} />
-                      <Line type="monotone" dataKey="emergency" name="Emergency" stroke={BALANCE_COLORS.emergency} strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} />
-                      <Line type="monotone" dataKey="retirement" name="Retirement" stroke={BALANCE_COLORS.retirement} strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} />
-                      <Line type="monotone" dataKey="health" name="Health" stroke={BALANCE_COLORS.health} strokeWidth={2.5} dot={false} activeDot={{ r: 5 }} />
+                      <Line type="monotone" dataKey="checking" name="Checking" stroke={BALANCE_COLORS.checking} strokeWidth={3} dot={{ r: 3, strokeWidth: 1, fill: '#fff' }} activeDot={{ r: 6 }} isAnimationActive={false} connectNulls />
+                      <Line type="monotone" dataKey="emergency" name="Emergency" stroke={BALANCE_COLORS.emergency} strokeWidth={3} dot={{ r: 3, strokeWidth: 1, fill: '#fff' }} activeDot={{ r: 6 }} isAnimationActive={false} connectNulls />
+                      <Line type="monotone" dataKey="retirement" name="Retirement" stroke={BALANCE_COLORS.retirement} strokeWidth={3} dot={{ r: 3, strokeWidth: 1, fill: '#fff' }} activeDot={{ r: 6 }} isAnimationActive={false} connectNulls />
+                      <Line type="monotone" dataKey="health" name="Health" stroke={BALANCE_COLORS.health} strokeWidth={3} dot={{ r: 3, strokeWidth: 1, fill: '#fff' }} activeDot={{ r: 6 }} isAnimationActive={false} connectNulls />
                     </>
                   )}
                 </LineChart>
