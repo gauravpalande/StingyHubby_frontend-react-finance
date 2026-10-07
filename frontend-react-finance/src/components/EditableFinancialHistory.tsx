@@ -1,15 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSupabaseClient, useUser } from '@supabase/auth-helpers-react';
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Legend,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
 import { buildImportedSubmissions, MAX_IMPORT_FILE_BYTES } from '../utils/csvImport';
 import './EditableFinancialHistory.css';
 
@@ -64,7 +54,7 @@ type ChartDatum = {
   health: number;
 };
 
-function FinancialLinePlot({ data, mode }: { data: ChartDatum[]; mode: ChartMode }) {
+function FinancialTrendPlot({ data, mode, type }: { data: ChartDatum[]; mode: ChartMode; type: 'line' | 'bar' }) {
   const series = mode === 'cashFlow'
     ? [
         { key: 'income' as const, label: 'Income', color: CASH_FLOW_COLORS.income },
@@ -95,13 +85,13 @@ function FinancialLinePlot({ data, mode }: { data: ChartDatum[]; mode: ChartMode
   )));
 
   return (
-    <div className="history-line-plot">
+    <div className="history-trend-plot">
       <div className="history-line-legend" aria-hidden="true">
         {series.map(({ key, label, color }) => (
           <span key={key}><i style={{ backgroundColor: color }} />{label}</span>
         ))}
       </div>
-      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`${mode === 'cashFlow' ? 'Cash flow' : 'Account balances'} over time`} preserveAspectRatio="none">
+      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`${mode === 'cashFlow' ? 'Cash flow' : 'Account balances'} ${type === 'line' ? 'trends' : 'bars'} over time`} preserveAspectRatio="none">
         {ticks.map((tick) => (
           <g key={tick}>
             <line x1={plot.left} x2={plot.right} y1={y(tick)} y2={y(tick)} stroke="#e8edf1" strokeDasharray="4 4" />
@@ -114,7 +104,7 @@ function FinancialLinePlot({ data, mode }: { data: ChartDatum[]; mode: ChartMode
             {data[index]?.date}
           </text>
         ))}
-        {series.map(({ key, label, color }) => {
+        {type === 'line' ? series.map(({ key, label, color }) => {
           const points = data.map((point, index) => `${x(index)},${y(point[key])}`).join(' ');
           return (
             <g key={key}>
@@ -126,7 +116,29 @@ function FinancialLinePlot({ data, mode }: { data: ChartDatum[]; mode: ChartMode
               ))}
             </g>
           );
-        })}
+        }) : (() => {
+          const zeroY = y(0);
+          const slot = data.length > 1 ? (plot.right - plot.left) / (data.length - 1) : 44;
+          const groupWidth = Math.min(34, slot * 0.76);
+          const barWidth = groupWidth / series.length;
+          return series.flatMap(({ key, label, color }, seriesIndex) => data.map((point, index) => {
+            const valueY = y(point[key]);
+            const barHeight = Math.max(1, Math.abs(zeroY - valueY));
+            return (
+              <rect
+                key={`${key}-${index}`}
+                x={x(index) - groupWidth / 2 + seriesIndex * barWidth}
+                y={Math.min(zeroY, valueY)}
+                width={Math.max(2, barWidth - 2)}
+                height={barHeight}
+                rx="2"
+                fill={color}
+              >
+                <title>{`${label} · ${point.date}: ${currencyFormatter.format(point[key])}`}</title>
+              </rect>
+            );
+          }));
+        })()}
       </svg>
     </div>
   );
@@ -448,33 +460,7 @@ const EditableFinancialHistory: React.FC = () => {
 
         {history.length ? (
           <div className="history-chart-wrap">
-            <ResponsiveContainer width="100%" height={320}>
-              {chartType === 'bar' ? (
-                <BarChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-                  <CartesianGrid stroke="#e8edf1" strokeDasharray="4 4" vertical={false} />
-                  <XAxis dataKey="date" minTickGap={32} tick={{ fill: '#687583', fontSize: 12 }} tickLine={false} axisLine={{ stroke: '#dce3e8' }} />
-                  <YAxis tickFormatter={(value) => compactCurrencyFormatter.format(Number(value))} tick={{ fill: '#687583', fontSize: 12 }} tickLine={false} axisLine={false} width={58} />
-                  <Tooltip formatter={(value) => currencyFormatter.format(Number(value))} contentStyle={{ borderRadius: 10, borderColor: '#dce3e8' }} />
-                  <Legend />
-                  {chartMode === 'cashFlow' ? (
-                    <>
-                      <Bar dataKey="income" name="Income" fill={CASH_FLOW_COLORS.income} radius={[4, 4, 0, 0]} isAnimationActive={false} />
-                      <Bar dataKey="expenses" name="Expenses" fill={CASH_FLOW_COLORS.expenses} radius={[4, 4, 0, 0]} isAnimationActive={false} />
-                      <Bar dataKey="netCashFlow" name="Net cash flow" fill={CASH_FLOW_COLORS.netCashFlow} radius={[4, 4, 0, 0]} isAnimationActive={false} />
-                    </>
-                  ) : (
-                    <>
-                      <Bar dataKey="checking" name="Checking" fill={BALANCE_COLORS.checking} radius={[4, 4, 0, 0]} isAnimationActive={false} />
-                      <Bar dataKey="emergency" name="Emergency" fill={BALANCE_COLORS.emergency} radius={[4, 4, 0, 0]} isAnimationActive={false} />
-                      <Bar dataKey="retirement" name="Retirement" fill={BALANCE_COLORS.retirement} radius={[4, 4, 0, 0]} isAnimationActive={false} />
-                      <Bar dataKey="health" name="Health" fill={BALANCE_COLORS.health} radius={[4, 4, 0, 0]} isAnimationActive={false} />
-                    </>
-                  )}
-                </BarChart>
-              ) : (
-                <FinancialLinePlot data={chartData} mode={chartMode} />
-              )}
-            </ResponsiveContainer>
+            <FinancialTrendPlot data={chartData} mode={chartMode} type={chartType} />
           </div>
         ) : (
           <div className="history-empty-state">
