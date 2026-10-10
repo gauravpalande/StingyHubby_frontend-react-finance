@@ -216,8 +216,16 @@ async function requireAuthenticatedUser(req: VercelRequest) {
   return user;
 }
 
-function value(source: FinancialInput | GoalsInput | null | undefined, key: string) {
-  return source?.[key] ?? 0;
+function value(
+  source: FinancialInput | GoalsInput | null | undefined,
+  key: keyof FinancialInput | keyof GoalsInput
+) {
+  if (!source) {
+    return 0;
+  }
+
+  const numericValue = (source as Record<string, number | undefined>)[key];
+  return typeof numericValue === 'number' ? numericValue : 0;
 }
 
 function buildFinancialSummary(latest: FinancialInput, goals: GoalsInput | null | undefined) {
