@@ -13,6 +13,7 @@ import {
 
 const MAX_FINANCIAL_AMOUNT = 1_000_000_000_000;
 const MAX_REQUEST_BYTES = 10_000;
+const PUBLIC_SERVER_ERROR_MESSAGE = 'The suggestion service is temporarily unavailable. Please try again.';
 
 const amountSchema = z.number().finite().min(-MAX_FINANCIAL_AMOUNT).max(MAX_FINANCIAL_AMOUNT);
 const financialInputSchema = z.object({
@@ -261,35 +262,6 @@ function isModelAccessError(error: unknown) {
   return status === 403 || status === 404 || code === 'model_not_found';
 }
 
-function getOpenAIErrorMessage(error: unknown, model: string) {
-  const openAIError = getObject(error);
-  const status = openAIError.status;
-  const code = openAIError.code;
-  const message = typeof openAIError.message === 'string' ? openAIError.message : '';
-
-  if (status === 401) {
-    return 'OpenAI rejected the server API key. Verify the Vercel variable is named exactly OPENAI_API_KEY, uses a valid OpenAI API key, is enabled for Production, and redeploy.';
-  }
-
-  if (status === 403) {
-    return `OpenAI refused access to the configured model (${model}). Grant the project access to this model, then redeploy.`;
-  }
-
-  if (status === 404 || code === 'model_not_found') {
-    return `OpenAI could not find or access the configured model (${model}). Grant the project access to this model, then redeploy.`;
-  }
-
-  if (status === 429) {
-    return 'OpenAI rate limit or quota was reached. Check the OpenAI project billing, usage limits, and rate limits.';
-  }
-
-  if (message) {
-    return `OpenAI request failed: ${message}`;
-  }
-
-  return 'Failed to generate financial suggestions. Check the Vercel function logs for /api/generate-suggestions.';
-}
-
 function requireSuggestion(parsed: Partial<FinancialSuggestions>, key: SuggestionKey) {
   const value = parsed[key];
 
@@ -357,12 +329,12 @@ async function generateSuggestions(financialSummary: string, requestId: string, 
           userId,
           model,
           fallbackModel: OPENAI_SUGGESTION_MODELS[1],
-          reason: getOpenAIErrorMessage(error, model),
+          reason: 'model_access_unavailable',
         });
         continue;
       }
 
-      throw new ApiError(getOpenAIErrorMessage(error, model), 502);
+      throw new ApiError('Suggestion provider request failed.', 502);
     }
   }
 
@@ -412,26 +384,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
     return res.status(200).json(suggestions);
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
     const statusCode = error instanceof ApiError
       ? error.statusCode
       : error instanceof RateLimitExceededError || error instanceof RateLimitUnavailableError
         ? error.statusCode
         : 500;
+    const publicMessage = statusCode >= 500
+      ? PUBLIC_SERVER_ERROR_MESSAGE
+      : error instanceof Error ? error.message : String(error);
 
     if (error instanceof RateLimitExceededError) {
       res.setHeader('Retry-After', String(error.retryAfterSeconds));
     }
 
     if (statusCode >= 500) {
-      console.error('[generate-suggestions] Error:', message);
       writeAuditLog('suggestions.request_failed', {
         requestId,
         durationMs: Date.now() - startedAt,
         statusCode,
-        reason: message,
+        reason: error instanceof RateLimitUnavailableError
+          ? 'rate_limit_unavailable'
+          : statusCode === 502 ? 'upstream_service_failure' : 'unexpected_server_error',
       });
     }
-    return res.status(statusCode).json({ error: message });
+    return res.status(statusCode).json({ error: publicMessage });
   }
 }

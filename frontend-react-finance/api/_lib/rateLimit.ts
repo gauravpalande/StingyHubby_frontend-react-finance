@@ -56,7 +56,7 @@ export async function enforceRateLimits(
     });
 
     if (error) {
-      console.error('[rate-limit] Counter request failed:', error.code || error.message);
+      console.error('[rate-limit] Counter request failed');
       throw new RateLimitUnavailableError();
     }
 
