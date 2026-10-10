@@ -44,14 +44,31 @@
   font-size: 0.98rem;
 }
 
-.finance-entry-card,
-.goal-settings-card {
+.finance-entry-card {
   margin-top: 20px;
   padding: clamp(18px, 2.5vw, 28px);
   background: #fff;
   border: 1px solid var(--finance-border);
   border-radius: 16px;
   box-shadow: 0 4px 18px rgb(25 42 56 / 5%);
+}
+
+.goal-settings-section {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid var(--finance-border);
+}
+
+.finance-goals-load-error {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.finance-goals-load-error .finance-form-message {
+  margin: 0;
 }
 
 .finance-entry-heading-row,
@@ -80,7 +97,6 @@
 }
 
 .finance-previous-button,
-.finance-secondary-submit,
 .finance-submit-button {
   display: inline-flex;
   min-height: 44px;
@@ -100,8 +116,7 @@
   transition: background-color 150ms ease, border-color 150ms ease, transform 150ms ease;
 }
 
-.finance-previous-button:hover:not(:disabled),
-.finance-secondary-submit:hover:not(:disabled) {
+.finance-previous-button:hover:not(:disabled) {
   border-color: var(--finance-accent);
   background: #f0fdfa;
 }
@@ -237,8 +252,7 @@
   font-size: 0.78rem;
 }
 
-.finance-form-footer,
-.goal-form-footer {
+.finance-form-footer {
   display: flex;
   align-items: center;
   gap: 14px;
@@ -303,15 +317,6 @@
   margin-top: 0;
 }
 
-.goal-form-footer {
-  align-items: flex-start;
-}
-
-.goal-form-footer .finance-form-message {
-  flex: 1;
-  margin: 0;
-}
-
 @media (max-width: 1120px) {
   .finance-groups-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -346,14 +351,12 @@
     min-height: 0;
   }
 
-  .finance-form-footer,
-  .goal-form-footer {
+  .finance-form-footer {
     align-items: stretch;
     flex-direction: column;
   }
 
-  .finance-submit-button,
-  .finance-secondary-submit {
+  .finance-submit-button {
     width: 100%;
   }
 }

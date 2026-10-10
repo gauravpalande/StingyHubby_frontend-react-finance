@@ -9,3 +9,11 @@ export interface FormData {
   carPayments: number;
   utilities: number;
 }
+
+export type SavingsGoals = {
+  emergency: number;
+  retirement: number;
+  health: number;
+};
+
+export type FinancialUpdateData = FormData & { goals: SavingsGoals };

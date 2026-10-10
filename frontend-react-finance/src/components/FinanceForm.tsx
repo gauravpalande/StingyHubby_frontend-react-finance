@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useSupabaseClient, useUser } from '@supabase/auth-helpers-react';
 import { generateFinancialSuggestions } from '../utils/suggestions';
-import type { FormData } from '../types/formTypes';
+import GoalSettingsForm from './GoalSettingsForm';
+import type { FinancialUpdateData, FormData } from '../types/formTypes';
 
 type FinanceField = keyof FormData;
 
@@ -52,14 +53,59 @@ const FinanceForm: React.FC = () => {
     handleSubmit,
     formState: { errors },
     reset,
-  } = useForm<FormData>();
+    getValues,
+    setValue,
+  } = useForm<FinancialUpdateData>({
+    defaultValues: { goals: { emergency: 0, retirement: 0, health: 0 } },
+  });
   const supabase = useSupabaseClient();
   const user = useUser();
+  const userId = user?.id;
 
+  const submitLock = useRef(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingPrevious, setIsLoadingPrevious] = useState(false);
+  const [goalsLoadedFor, setGoalsLoadedFor] = useState<string | null>(null);
+  const [goalLoadError, setGoalLoadError] = useState('');
+  const [goalLoadAttempt, setGoalLoadAttempt] = useState(0);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<'success' | 'error' | 'info'>('info');
+  const goalsReady = Boolean(userId && goalsLoadedFor === userId);
+
+  useEffect(() => {
+    let active = true;
+    setGoalsLoadedFor(null);
+    setGoalLoadError('');
+
+    const loadGoals = async () => {
+      if (!userId) return;
+
+      try {
+        const { data, error } = await supabase
+          .from('goals')
+          .select('emergency, retirement, health')
+          .eq('user_id', userId)
+          .maybeSingle();
+
+        if (!active) return;
+        if (error) throw new Error('Could not load your savings goals.');
+
+        setValue('goals', {
+          emergency: Number(data?.emergency) || 0,
+          retirement: Number(data?.retirement) || 0,
+          health: Number(data?.health) || 0,
+        });
+        setGoalsLoadedFor(userId);
+      } catch {
+        if (active) {
+          setGoalLoadError('Could not load your savings goals. Please retry before saving.');
+        }
+      }
+    };
+
+    void loadGoals();
+    return () => { active = false; };
+  }, [supabase, userId, setValue, goalLoadAttempt]);
 
   const usePreviousValues = async () => {
     if (!user || isLoadingPrevious || isSubmitting) return;
@@ -100,7 +146,7 @@ const FinanceForm: React.FC = () => {
         utilities: Number(data.utilities) || 0,
       };
 
-      reset(previousValues);
+      reset({ ...previousValues, goals: getValues('goals') });
       setMessageType('success');
       setMessage('Previous values loaded. Update anything that has changed.');
     } catch (error) {
@@ -112,24 +158,22 @@ const FinanceForm: React.FC = () => {
     }
   };
 
-  const onSubmit = async (data: FormData) => {
+  const onSubmit = async ({ goals, ...data }: FinancialUpdateData) => {
     if (!user) {
       setMessageType('error');
-      setMessage('Sign in to save a financial update.');
+      setMessage('Sign in to save your finances and goals.');
       return;
     }
 
+    if (submitLock.current || isLoadingPrevious || !goalsReady) return;
+
+    submitLock.current = true;
     setIsSubmitting(true);
     setMessage('Generating your financial suggestions…');
     setMessageType('info');
 
+    let goalsSaved = false;
     try {
-      const { data: goals } = await supabase
-        .from('goals')
-        .select('emergency, retirement, health')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
       const {
         data: { session },
         error: sessionError,
@@ -140,6 +184,19 @@ const FinanceForm: React.FC = () => {
       }
 
       const suggestions = await generateFinancialSuggestions(data, goals, session.access_token);
+      setMessage('Saving your financial snapshot and savings goals…');
+
+      const { error: goalsError } = await supabase
+        .from('goals')
+        .upsert({ ...goals, user_id: user.id }, { onConflict: 'user_id' })
+        .select('user_id')
+        .single();
+
+      if (goalsError) {
+        throw new Error('Could not save your savings goals. Your financial snapshot was not saved. Please try again.');
+      }
+      goalsSaved = true;
+
       const { error } = await supabase.from('submissions').insert([{
         ...data,
         ...suggestions,
@@ -147,17 +204,19 @@ const FinanceForm: React.FC = () => {
       }]);
 
       if (error) {
-        throw new Error('Could not save your financial update. Please try again.');
+        throw new Error('Could not save your financial snapshot.');
       }
 
-      reset();
+      reset({ ...data, goals });
       setMessageType('success');
-      setMessage('Financial update saved successfully.');
+      setMessage('Financial snapshot and savings goals saved successfully.');
     } catch (error) {
-      console.error('Financial update error:', error);
       setMessageType('error');
-      setMessage(error instanceof Error ? error.message : 'Could not save your update. Please try again.');
+      setMessage(goalsSaved
+        ? 'Savings goals were saved, but your financial snapshot could not be saved. Please try again.'
+        : error instanceof Error ? error.message : 'Could not save your finances and goals. Please try again.');
     } finally {
+      submitLock.current = false;
       setIsSubmitting(false);
     }
   };
@@ -182,7 +241,7 @@ const FinanceForm: React.FC = () => {
       <form onSubmit={handleSubmit(onSubmit)} noValidate>
         <div className="finance-groups-grid">
           {FIELD_GROUPS.map((group) => (
-            <fieldset className="finance-field-group" key={group.title} disabled={isSubmitting}>
+            <fieldset className="finance-field-group" key={group.title} disabled={isSubmitting || isLoadingPrevious}>
               <legend>{group.title}</legend>
               <p className="finance-group-description">{group.description}</p>
 
@@ -227,12 +286,33 @@ const FinanceForm: React.FC = () => {
           ))}
         </div>
 
+        <GoalSettingsForm
+          register={register}
+          errors={errors}
+          disabled={isSubmitting || isLoadingPrevious || !goalsReady}
+        />
+
+        {!goalsReady && user && (
+          goalLoadError ? (
+            <div className="finance-goals-load-error">
+              <p className="finance-form-message finance-form-message-error" role="alert">{goalLoadError}</p>
+              <button
+                className="finance-previous-button"
+                type="button"
+                onClick={() => setGoalLoadAttempt((attempt) => attempt + 1)}
+              >
+                Retry loading goals
+              </button>
+            </div>
+          ) : <p className="finance-form-note" role="status">Loading your savings goals…</p>
+        )}
+
         <div className="finance-form-footer">
-          <button className="finance-submit-button" type="submit" disabled={isSubmitting || isLoadingPrevious}>
+          <button className="finance-submit-button" type="submit" disabled={isSubmitting || isLoadingPrevious || !goalsReady}>
             {isSubmitting && <span className="finance-spinner" aria-hidden="true" />}
-            {isSubmitting ? 'Saving update…' : 'Save financial update'}
+            {isSubmitting ? 'Saving…' : 'Save finances and goals'}
           </button>
-          <p className="finance-form-note">A new dated snapshot is added to your financial history.</p>
+          <p className="finance-form-note">Saves your goals and adds a new dated snapshot to your financial history.</p>
         </div>
 
         {message && (

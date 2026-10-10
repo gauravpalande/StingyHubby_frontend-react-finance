@@ -1,5 +1,4 @@
 import FinanceForm from '../components/FinanceForm';
-import GoalSettingsForm from '../components/GoalSettingsForm';
 import './UpdateFinancesPage.css';
 
 const UpdateFinancesPage = () => {
@@ -8,12 +7,11 @@ const UpdateFinancesPage = () => {
       <header className="update-finances-header">
         <span className="finance-section-eyebrow">YOUR MONEY, UP TO DATE</span>
         <h1>Update finances</h1>
-        <p>Record a clear snapshot of your income, balances, and monthly expenses.</p>
+        <p>Update your financial snapshot and savings goals, then save them together.</p>
       </header>
 
       <FinanceForm />
 
-      <GoalSettingsForm />
     </div>
   );
 };
