@@ -1,29 +1,30 @@
-import { VercelRequest, VercelResponse } from '@vercel/node';
-import { supabase } from '../src/supabaseClient';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { createClient } from '@supabase/supabase-js';
+import { verifyUnsubscribeToken } from './_lib/unsubscribeToken.mjs';
 
-module.exports = async function handler(req: VercelRequest, res: VercelResponse) {
-  const userId = req.query.user as string;
-
-  if (!userId) {
-    return res.status(400).send('Missing user id');
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  if (req.method !== 'GET') {
+    res.setHeader('Allow', 'GET');
+    return res.status(405).send('Method not allowed');
   }
-
-  const { error } = await supabase
-    .from("users")
-    .update({ wants_digest: false })
-    .eq("id", userId);
-
-  if (error) {
-    return res.status(500).send(error.message);
+  const secret = process.env.UNSUBSCRIBE_SIGNING_SECRET;
+  const url = process.env.SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!secret || secret.length < 32 || !url || !serviceKey) {
+    return res.status(503).send('Unsubscribe temporarily unavailable');
   }
-
-  res.setHeader("Content-Type", "text/html");
-  return res.status(200).send(`
-    <html>
-      <body style="font-family: sans-serif; padding: 40px;">
-        <h2>You have been unsubscribed</h2>
-        <p>You will no longer receive the weekly PennyWize digest.</p>
-      </body>
-    </html>
-  `);
-};
+  const userId = verifyUnsubscribeToken(req.query.token, secret);
+  if (!userId) return res.status(400).send('Invalid or expired unsubscribe link');
+  try {
+    const supabase = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
+    const { error } = await supabase.from('preferences').update({ email_weekly_digest: false }).eq('user_id', userId);
+    if (error) throw error;
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    return res.status(200).send('<!doctype html><html><body><h2>Unsubscribed</h2><p>You will no longer receive the weekly PennyWize digest.</p></body></html>');
+  } catch (error) {
+    console.error('[unsubscribe] preference update failed', error instanceof Error ? error.message : 'unknown error');
+    return res.status(500).send('Unable to unsubscribe right now');
+  }
+}
