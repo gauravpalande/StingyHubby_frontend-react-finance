@@ -4,6 +4,7 @@ export const config = { runtime: "nodejs" };
 import PDFDocument from "pdfkit";
 import { PassThrough } from "stream";
 import { timingSafeEqual } from "node:crypto";
+import { createUnsubscribeToken } from "./_lib/unsubscribeToken.mjs";
 
 const WEEKLY_DIGEST_TYPE = "weekly";
 const DEFAULT_DIGEST_RECIPIENT_LIMIT = 100;
@@ -474,8 +475,8 @@ export default async function handler(req, res) {
       } catch {}
 
       // ✅ Unsubscribe goes directly to your Vercel API route
-      const unsubscribeUrl = `${site}/api/unsubscribe?user=${encodeURIComponent(
-        user.id
+      const unsubscribeUrl = `${site}/api/unsubscribe?token=${encodeURIComponent(
+        createUnsubscribeToken(user.id, process.env.UNSUBSCRIBE_SIGNING_SECRET)
       )}`;
 
       const html = await renderWeeklyDigestHtml({
