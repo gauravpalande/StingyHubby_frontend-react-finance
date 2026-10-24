@@ -5,6 +5,13 @@ import PDFDocument from "pdfkit";
 import { PassThrough } from "stream";
 import { timingSafeEqual } from "node:crypto";
 import { createUnsubscribeToken } from "./_lib/unsubscribeToken.mjs";
+import {
+  createDigestMailer,
+  GMAIL_SENDER_EMAIL,
+  GmailConfigurationError,
+  GmailConnectionError,
+  GmailDeliveryError,
+} from "./_lib/digestMailer.mjs";
 
 const WEEKLY_DIGEST_TYPE = "weekly";
 const DEFAULT_DIGEST_RECIPIENT_LIMIT = 100;
@@ -44,7 +51,7 @@ function getUtcWeekPeriod(date) {
 async function updateDeliveryStatus(supabase, periodKey, userId, status, error) {
   const values = {
     status,
-    completed_at: new Date().toISOString(),
+    completed_at: status === "running" ? null : new Date().toISOString(),
     last_error: error ? String(error).slice(0, 500) : null,
   };
   const { error: updateError } = await supabase
@@ -55,7 +62,7 @@ async function updateDeliveryStatus(supabase, periodKey, userId, status, error) 
     .eq("user_id", userId);
 
   if (updateError) {
-    console.error("[weekly-digest] Failed to update delivery status:", updateError.message);
+    console.error("[weekly-digest] Failed to update delivery status");
   }
 }
 
@@ -298,6 +305,7 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
+  let mailer;
   try {
     const url = new URL(
       req.url,
@@ -309,10 +317,20 @@ export default async function handler(req, res) {
         .status(200)
         .json({ ok: true, message: "dry run – no emails sent" });
 
+    mailer = createDigestMailer();
+    await mailer.verify();
+    if (url.searchParams.get("verify") === "1") {
+      return res.status(200).json({
+        ok: true,
+        provider: "gmail",
+        sender: GMAIL_SENDER_EMAIL,
+        message: "Gmail connection verified; no emails sent.",
+      });
+    }
+
     const missing = [
       "SUPABASE_URL",
       "SUPABASE_SERVICE_ROLE_KEY",
-      "RESEND_API_KEY",
     ].filter((k) => !process.env[k]);
     if (missing.length)
       return res
@@ -322,13 +340,11 @@ export default async function handler(req, res) {
         });
 
     const { createClient } = await import("@supabase/supabase-js");
-    const { Resend } = await import("resend");
 
     const supabase = createClient(
       process.env.SUPABASE_URL,
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
-    const resend = new Resend(process.env.RESEND_API_KEY);
 
     const { error: cleanupError } = await supabase.rpc(
       "cleanup_cost_protection_data"
@@ -392,6 +408,8 @@ export default async function handler(req, res) {
 
     let sentCount = 0;
     let duplicateCount = 0;
+    let failedCount = 0;
+    let uncertainCount = 0;
     const periodKey = getUtcWeekPeriod(new Date());
 
     for (const user of users) {
@@ -414,6 +432,8 @@ export default async function handler(req, res) {
         continue;
       }
 
+      let sendAttempted = false;
+      let deliveryAccepted = false;
       try {
       const { data: history, error: historyError } = await supabase
         .from("submissions")
@@ -525,42 +545,50 @@ export default async function handler(req, res) {
       } catch {}
       if (logoAttachment) attachments.push(logoAttachment);
 
-      const emailResult = await resend.emails.send(
+      sendAttempted = true;
+      const emailResult = await mailer.sendMail(
         {
-          from: "PennyWize <digest@stingyhubby.xyz>",
           to: user.email,
           subject: "Your Weekly Financial Digest",
           html,
           ...(attachments.length ? { attachments } : {}),
-        },
-        { idempotencyKey: `pennywize-weekly:${periodKey}:${user.id}` }
+          deliveryKey: `pennywize-weekly:${periodKey}:${user.id}`,
+        }
       );
+      deliveryAccepted = true;
+      sentCount += 1;
+      await updateDeliveryStatus(supabase, periodKey, user.id, "sent");
 
-      if (emailResult.error) {
-        throw new Error(emailResult.error.message || "Resend rejected the weekly digest");
-      }
-
-      await supabase.from("email_logs").insert({
+      const { error: logError } = await supabase.from("email_logs").insert({
         user_id: user.id,
         email: user.email,
         status: "sent",
-        metadata: { type: "weekly", resendId: emailResult.data?.id },
+        metadata: { type: "weekly", provider: "gmail", messageId: emailResult.messageId },
       });
-
-      await updateDeliveryStatus(supabase, periodKey, user.id, "sent");
-
-      sentCount += 1;
+      if (logError) console.error("[weekly-digest] Failed to record accepted email");
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        await updateDeliveryStatus(supabase, periodKey, user.id, "failed", message);
-        console.error(`[weekly-digest] Failed for user ${user.id}:`, message);
+        if (deliveryAccepted) {
+          // The existing claim must never become retryable after Gmail accepted it.
+          console.error(`[weekly-digest] Failed to record accepted email for user ${user.id}`);
+          continue;
+        }
+        const uncertain = sendAttempted &&
+          (!(error instanceof GmailDeliveryError) || error.uncertain);
+        const reason = uncertain ? "delivery_outcome_unknown" : "delivery_failed";
+        if (uncertain) uncertainCount += 1;
+        else failedCount += 1;
+        await updateDeliveryStatus(supabase, periodKey, user.id, uncertain ? "running" : "failed", reason);
+        console.error(`[weekly-digest] ${reason} for user ${user.id}`);
       }
     }
 
     return res
       .status(200)
-      .json({ message: "Digest run finished", sent: sentCount, duplicatesSkipped: duplicateCount });
+      .json({ message: "Digest run finished", sent: sentCount, failed: failedCount, deliveryUncertain: uncertainCount, duplicatesSkipped: duplicateCount });
   } catch (err) {
+    if (err instanceof GmailConfigurationError || err instanceof GmailConnectionError) {
+      return res.status(503).json({ error: err.message, ...(err instanceof GmailConnectionError ? { reason: err.reason } : {}) });
+    }
     console.error("💥 Unhandled error:", err);
     const msg =
       err && typeof err === "object" && "message" in err
@@ -569,5 +597,7 @@ export default async function handler(req, res) {
     return res
       .status(500)
       .json({ error: msg || "Failed to send digest" });
+  } finally {
+    mailer?.close();
   }
 }

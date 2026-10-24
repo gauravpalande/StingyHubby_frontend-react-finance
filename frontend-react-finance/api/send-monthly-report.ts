@@ -10,10 +10,16 @@ export const config = {
 };
 
 import { createClient } from '@supabase/supabase-js';
-import { Resend } from 'resend';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import PDFDocument from 'pdfkit';
 import { timingSafeEqual } from 'node:crypto';
+import {
+  createDigestMailer,
+  GMAIL_SENDER_EMAIL,
+  GmailConfigurationError,
+  GmailConnectionError,
+  GmailDeliveryError,
+} from './_lib/digestMailer.mjs';
 
 const MONTHLY_DIGEST_TYPE = 'monthly';
 const DEFAULT_DIGEST_RECIPIENT_LIMIT = 100;
@@ -23,7 +29,6 @@ const supabase = createClient(
   process.env.SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
-const resend = new Resend(process.env.RESEND_API_KEY!);
 
 function firstHeaderValue(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
@@ -53,14 +58,14 @@ function getPreviousMonthPeriod(date: Date) {
 async function updateDeliveryStatus(
   periodKey: string,
   userId: string,
-  status: 'sent' | 'skipped' | 'failed',
+  status: 'sent' | 'skipped' | 'failed' | 'running',
   error?: string
 ) {
   const { error: updateError } = await supabase
     .from('scheduled_email_deliveries')
     .update({
       status,
-      completed_at: new Date().toISOString(),
+      completed_at: status === 'running' ? null : new Date().toISOString(),
       last_error: error ? error.slice(0, 500) : null,
     })
     .eq('digest_type', MONTHLY_DIGEST_TYPE)
@@ -68,7 +73,7 @@ async function updateDeliveryStatus(
     .eq('user_id', userId);
 
   if (updateError) {
-    console.error('[monthly-digest] Failed to update delivery status:', updateError.message);
+    console.error('[monthly-digest] Failed to update delivery status');
   }
 }
 
@@ -266,7 +271,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
+  let mailer: ReturnType<typeof createDigestMailer> | undefined;
   try {
+    const url = new URL(req.url || '/api/send-monthly-report', `https://${req.headers.host || 'localhost'}`);
+    if (url.searchParams.get('dryRun') === '1') {
+      return res.status(200).json({ ok: true, message: 'dry run – no emails sent' });
+    }
+
+    mailer = createDigestMailer();
+    await mailer.verify();
+    if (url.searchParams.get('verify') === '1') {
+      return res.status(200).json({
+        ok: true,
+        provider: 'gmail',
+        sender: GMAIL_SENDER_EMAIL,
+        message: 'Gmail connection verified; no emails sent.',
+      });
+    }
+
     const { error: cleanupError } = await supabase.rpc('cleanup_cost_protection_data');
     if (cleanupError) {
       throw new Error(`Unable to clean cost-protection data: ${cleanupError.message}`);
@@ -304,6 +326,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const periodKey = getPreviousMonthPeriod(new Date());
     let sentCount = 0;
     let duplicateCount = 0;
+    let failedCount = 0;
+    let uncertainCount = 0;
 
     // Step 3: Loop through users and send digests
     for (const user of users) {
@@ -326,6 +350,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         continue;
       }
 
+      let sendAttempted = false;
+      let deliveryAccepted = false;
       try {
       // Previous calendar month
       const now = new Date();
@@ -441,46 +467,58 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
       }
 
-      const response = await resend.emails.send(
+      sendAttempted = true;
+      const response = await mailer.sendMail(
         {
-          from: 'digest@stingyhubby.xyz',
           to: user.email,
           subject: 'Your Monthly Financial Digest',
           html: htmlContent,
           ...(attachments.length ? { attachments } : {}),
-        },
-        { idempotencyKey: `pennywize-monthly:${periodKey}:${user.id}` }
+          deliveryKey: `pennywize-monthly:${periodKey}:${user.id}`,
+        }
       );
+      deliveryAccepted = true;
+      sentCount += 1;
+      await updateDeliveryStatus(periodKey, user.id, 'sent');
 
-      if (response.error) {
-        throw new Error(response.error.message || 'Resend rejected the monthly digest');
-      }
-
-      await supabase.from('email_logs').insert({
+      const { error: logError } = await supabase.from('email_logs').insert({
         user_id: user.id,
         email: user.email,
         status: 'sent',
-        metadata: { type: 'monthly', resendId: response.data?.id },
+        metadata: { type: 'monthly', provider: 'gmail', messageId: response.messageId },
       });
-
-      await updateDeliveryStatus(periodKey, user.id, 'sent');
-      sentCount += 1;
+      if (logError) console.error('[monthly-digest] Failed to record accepted email');
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        await updateDeliveryStatus(periodKey, user.id, 'failed', message);
-        console.error(`[monthly-digest] Failed for user ${user.id}:`, message);
+        if (deliveryAccepted) {
+          console.error(`[monthly-digest] Failed to record accepted email for user ${user.id}`);
+          continue;
+        }
+        const uncertain = sendAttempted &&
+          (!(error instanceof GmailDeliveryError) || error.uncertain);
+        const reason = uncertain ? 'delivery_outcome_unknown' : 'delivery_failed';
+        if (uncertain) uncertainCount += 1;
+        else failedCount += 1;
+        await updateDeliveryStatus(periodKey, user.id, uncertain ? 'running' : 'failed', reason);
+        console.error(`[monthly-digest] ${reason} for user ${user.id}`);
       }
     }
 
     return res.status(200).json({
       message: 'Monthly Digest run finished',
       sent: sentCount,
+      failed: failedCount,
+      deliveryUncertain: uncertainCount,
       duplicatesSkipped: duplicateCount,
     });
   } catch (err: unknown) {
+    if (err instanceof Error && (err instanceof GmailConfigurationError || err instanceof GmailConnectionError)) {
+      return res.status(503).json({ error: err.message, ...(err instanceof GmailConnectionError && 'reason' in err ? { reason: err.reason } : {}) });
+    }
     const errorMessage =
       err instanceof Error ? err.message : 'Unknown error occurred';
     console.error('💥 Unhandled error:', errorMessage);
     return res.status(500).json({ error: errorMessage });
+  } finally {
+    mailer?.close();
   }
 }

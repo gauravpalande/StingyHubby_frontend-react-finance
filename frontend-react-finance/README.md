@@ -27,7 +27,7 @@ Paid and resource-intensive operations are protected on the server and in Postgr
 
 - OpenAI suggestion requests require a valid Supabase session, strict numeric financial data, an `application/json` body no larger than 10 KB, and database-backed limits. Defaults are 5 requests per user per hour, 20 per user per day, 50 per IP fingerprint per day, and 200 total requests per day.
 - OpenAI output is capped at 500 tokens. Automatic SDK retries are disabled so one application request cannot silently multiply into several paid requests.
-- Weekly and monthly digest routes require Vercel's `Authorization: Bearer <CRON_SECRET>` header. Per-user delivery claims and Resend idempotency keys prevent duplicate cron invocations from sending duplicate paid emails. Each run processes at most 100 recipients by default.
+- Weekly and monthly digest routes require Vercel's `Authorization: Bearer <CRON_SECRET>` header. Per-user database claims block concurrent or repeated sends for the same reporting period. Gmail delivery with an uncertain outcome remains claimed for manual review instead of automatically retrying. Each run processes at most 100 recipients by default.
 - Stripe billing-portal requests require a valid Supabase access token, use the authenticated user's Stripe customer, and are rate-limited.
 - CSV imports are limited to 1 MB and 250 rows in the browser. PostgreSQL independently limits authenticated users to 500 new finance records and 20 feedback records per day, validates ownership, and rejects oversized values or text.
 - History screens fetch at most 1,000 records, monthly reports process at most 100 records per user, and external chart requests time out after 8 seconds.
@@ -39,6 +39,38 @@ npx supabase db push
 ```
 
 Add a random `CRON_SECRET` of at least 16 characters to the Vercel Production environment before deploying. Vercel automatically sends it to configured cron routes. The OpenAI limits can optionally be adjusted with `OPENAI_USER_HOURLY_LIMIT`, `OPENAI_USER_DAILY_LIMIT`, `OPENAI_IP_DAILY_LIMIT`, and `OPENAI_GLOBAL_DAILY_LIMIT`. `DIGEST_RECIPIENT_LIMIT` can adjust the per-run email cap from 1 to 1,000; its safe default is 100.
+
+## Gmail digest delivery
+
+Weekly and monthly jobs send through Gmail SMTP as **PennyWize <gapisgod@gmail.com>**. The website can remain at `https://pennywize.vercel.app`; no custom email domain or Resend account is required. Both the authenticated Google account and the From address are fixed to the requested Gmail account.
+
+### Setup
+
+1. Sign into `gapisgod@gmail.com` and enable Google 2-Step Verification.
+2. Open [Google App Passwords](https://myaccount.google.com/apppasswords), create an App Password named **PennyWize**, and copy it directly to Vercel **Settings → Environment Variables** as `GMAIL_APP_PASSWORD`. Use an App Password, not your normal Google password. Do not put it in source code or chat.
+3. Set the variable for **Production** and, if testing a preview, **Preview**. Google displays the 16-character password in groups; the server accepts it with or without the spaces. No `GMAIL_USER` or `DIGEST_FROM_EMAIL` setting is needed.
+4. Keep `CRON_SECRET` (at least 16 characters), `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and the existing delivery-tracking database migration. Weekly unsubscribe links also need `UNSUBSCRIBE_SIGNING_SECRET` (at least 32 characters).
+5. Deploy this updated source after saving the variable. Vercel environment changes only affect new deployments. `RESEND_API_KEY` is no longer used by either job, and the Resend dependency has been removed.
+
+Google may not offer App Passwords for accounts with certain security policies; if the App Passwords page is unavailable, the integration needs Google OAuth authorization instead. Gmail also enforces sending limits; use this setup for a small opted-in mailing list. The existing recipient limit defaults to 100 per job.
+
+### Verify and run
+
+All requests need the `Authorization: Bearer <CRON_SECRET>` header:
+
+- `GET /api/send-digest?dryRun=1` or `/api/send-monthly-report?dryRun=1`: check cron authentication only; no Gmail connection, database access, or email sends.
+- `GET /api/send-digest?verify=1` or `/api/send-monthly-report?verify=1`: authenticate to Gmail and verify its SMTP connection, then return without database access or sending email. This confirms credentials/connectivity, not inbox delivery.
+- `GET /api/send-digest` or `/api/send-monthly-report`: verify Gmail, select opted-in recipients, and send their reports. The existing Vercel schedules remain unchanged. Vercel **Settings → Cron Jobs → Run** executes this real delivery path.
+
+Missing or malformed credentials return HTTP 503 before creating delivery claims. A Gmail authentication/connection failure also stops the job before database work. SMTP uses TLS on port 465 with bounded connection and socket inactivity timeouts, and every send is awaited before the function responds.
+
+### Delivery results and retries
+
+The response reports `sent`, `failed`, `deliveryUncertain`, and `duplicatesSkipped`. `sent` means Gmail accepted the message for delivery; it does not guarantee inbox delivery. Email logs store `provider: gmail` and the message ID. HTML, CSV/PDF attachments, and the weekly unsubscribe link are preserved.
+
+SMTP has no provider idempotency key. A timeout or disconnect after submission may mean Gmail accepted the message even though the server did not receive confirmation. Those attempts remain `running` with `last_error: delivery_outcome_unknown`; the existing weekly eight-day and monthly 32-day claim leases prevent automatic repeats during the same reporting period. Review Gmail's Sent folder before deciding how to recover an uncertain delivery. A stable Message-ID helps trace the message but does not guarantee deduplication.
+
+Failures before submission and explicit Gmail rejection remain retryable. Once Gmail confirms acceptance, a later database/logging error never marks the delivery as retryable. App-password values, raw SMTP responses, and message contents are not logged by the mailer.
 
 ## Free feature access
 
