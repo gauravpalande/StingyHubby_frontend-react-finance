@@ -1,5 +1,42 @@
 # React + TypeScript + Vite
 
+## Pull-request verification
+
+`.github/workflows/ci.yml` runs the existing regression tests and production build
+for every pull request targeting `main`, every push to `main`, and manual runs.
+It uses Node 24 from `.nvmrc` and the committed npm lockfile. There are no path
+filters, so documentation-only pull requests also receive a check result.
+
+To reproduce the checks locally from `frontend-react-finance` with Node 24:
+
+```bash
+npm ci --ignore-scripts --no-audit --no-fund
+npm test
+npm run build
+```
+
+The tests mock external dependencies; no Supabase, OpenAI, Gmail, Stripe, or
+Vercel credentials are supplied to CI. The build also compiles the email
+template and runs `tsc --noEmit`. These checks do not exercise a live database,
+send real email, or deploy the application. Vercel preview status is a separate
+check and must still be reviewed before merging.
+
+The workflow has read-only repository permissions, does not persist checkout
+credentials, pins actions to commit SHAs, and skips dependency install scripts.
+Its npm download cache is keyed by the lockfile. Superseded runs are cancelled
+and each job is limited to ten minutes. Review upstream releases before updating
+the pinned action SHAs.
+
+CI reports failures but does not itself prevent merging. After the first
+successful run, a repository administrator can require the check
+`Tests and build (Node 24)` in the `main` branch rules. Branch rules are not
+changed by this workflow. A failing PR must not be merged; revert the workflow
+commit if the workflow itself needs to be removed.
+
+`npm run lint` is not part of this initial CI check: the unchanged baseline on
+2026-10-31 has five errors and two warnings. Those existing findings need a
+separate cleanup before lint can be required; no lint rules are disabled here.
+
 ## OpenAI API cost setting
 
 The app generates financial suggestions in `api/generate-suggestions.ts` with OpenAI's Responses API.
