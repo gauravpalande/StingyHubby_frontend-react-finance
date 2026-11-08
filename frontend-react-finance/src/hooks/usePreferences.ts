@@ -13,7 +13,7 @@ type Preferences = {
 export const usePreferences = () => {
   const supabase = useSupabaseClient();
   const user = useUser();
-  const [prefs, setPrefs] = useState<Preferences | null>(null);
+  const [prefs, setPrefs] = useState<Partial<Preferences> | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -34,15 +34,7 @@ export const usePreferences = () => {
 
   const updatePrefs = async (updates: Partial<Preferences>) => {
     if (!user) return;
-    const newPrefs: Preferences = {
-      graph_type: updates.graph_type !== undefined
-        ? updates.graph_type
-        : prefs?.graph_type ?? null,
-      show_suggestions: updates.show_suggestions ?? prefs?.show_suggestions ?? false,
-      email_weekly_digest: updates.email_weekly_digest ?? prefs?.email_weekly_digest ?? false,
-      email_monthly_digest: updates.email_monthly_digest ?? prefs?.email_monthly_digest ?? false,
-      user_id: user.id,
-    };
+    const newPrefs = { ...prefs, ...updates, user_id: user.id };
     await supabase
       .from('preferences')
       .upsert(newPrefs, { onConflict: 'user_id' });

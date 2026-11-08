@@ -2,8 +2,8 @@
 
 ## Pull-request verification
 
-`.github/workflows/ci.yml` runs the existing regression tests and production build
-for every pull request targeting `main`, every push to `main`, and manual runs.
+`.github/workflows/ci.yml` runs ESLint, the regression tests, and the production
+build for every pull request targeting `main`, every push to `main`, and manual runs.
 It uses Node 24 from `.nvmrc` and the committed npm lockfile. There are no path
 filters, so documentation-only pull requests also receive a check result.
 
@@ -11,6 +11,7 @@ To reproduce the checks locally from `frontend-react-finance` with Node 24:
 
 ```bash
 npm ci --ignore-scripts --no-audit --no-fund
+npm run lint
 npm test
 npm run build
 ```
@@ -32,10 +33,6 @@ successful run, a repository administrator can require the check
 `Tests and build (Node 24)` in the `main` branch rules. Branch rules are not
 changed by this workflow. A failing PR must not be merged; revert the workflow
 commit if the workflow itself needs to be removed.
-
-`npm run lint` is not part of this initial CI check: the unchanged baseline on
-2026-10-31 has five errors and two warnings. Those existing findings need a
-separate cleanup before lint can be required; no lint rules are disabled here.
 
 ## OpenAI API cost setting
 
