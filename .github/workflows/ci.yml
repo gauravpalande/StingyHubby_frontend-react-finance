@@ -34,8 +34,10 @@ jobs:
           cache: npm
           cache-dependency-path: frontend-react-finance/package-lock.json
       - name: Install locked dependencies
-        # The tests and build work without dependency lifecycle scripts.
+        # The checks work without dependency lifecycle scripts.
         run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Run ESLint
+        run: npm run lint
       - name: Run regression tests
         run: npm test
       - name: Type-check and build application and email template
