@@ -34,7 +34,7 @@ const UserPreferences: React.FC = () => {
     };
 
     fetchPrefs();
-  }, [user]);
+  }, [supabase, user]);
 
   const savePrefs = async () => {
     if (!user) return;
@@ -57,7 +57,7 @@ const UserPreferences: React.FC = () => {
       <h3>📊 Preferences</h3>
 
       <label>Graph Type</label>
-      <select value={graphType} onChange={(e) => setGraphType(e.target.value as any)}>
+      <select value={graphType} onChange={(e) => setGraphType(e.target.value as 'line' | 'bar')}>
         <option value="line">Line</option>
         <option value="bar">Bar</option>
       </select>

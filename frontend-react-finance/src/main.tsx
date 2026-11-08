@@ -8,8 +8,9 @@ import { SessionContextProvider } from '@supabase/auth-helpers-react';
 const container = document.getElementById('root');
 if (!container) throw new Error("Root container not found");
 
-const root = (window as any).__vite_root__ ?? ReactDOM.createRoot(container);
-(window as any).__vite_root__ = root;
+const viteWindow = window as Window & { __vite_root__?: ReactDOM.Root };
+const root = viteWindow.__vite_root__ ?? ReactDOM.createRoot(container);
+viteWindow.__vite_root__ = root;
 
 root.render(
   <React.StrictMode>
