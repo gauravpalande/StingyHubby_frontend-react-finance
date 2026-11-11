@@ -4,7 +4,6 @@ import type { VercelRequest } from '@vercel/node';
 
 type RateLimitResult = {
   allowed: boolean;
-  remaining: number;
   retry_after_seconds: number;
 };
 
@@ -44,6 +43,25 @@ export function getClientFingerprint(req: VercelRequest) {
   return createHash('sha256').update(address).digest('hex').slice(0, 32);
 }
 
+function parseRateLimitResult(data: unknown): RateLimitResult | null {
+  const result = Array.isArray(data) ? data[0] : data;
+  if (!result || typeof result !== 'object' || Array.isArray(result)) return null;
+
+  const response = result as Record<string, unknown>;
+  if (typeof response.allowed !== 'boolean') return null;
+
+  if (response.allowed) {
+    return { allowed: true, retry_after_seconds: 0 };
+  }
+
+  const retryAfterSeconds = response.retry_after_seconds;
+  if (!Number.isSafeInteger(retryAfterSeconds) || (retryAfterSeconds as number) < 1) {
+    return null;
+  }
+
+  return { allowed: false, retry_after_seconds: retryAfterSeconds as number };
+}
+
 export async function enforceRateLimits(
   supabase: SupabaseClient,
   rules: RateLimitRule[]
@@ -60,14 +78,14 @@ export async function enforceRateLimits(
       throw new RateLimitUnavailableError();
     }
 
-    const result = (Array.isArray(data) ? data[0] : data) as RateLimitResult | null;
-    if (!result || typeof result.allowed !== 'boolean') {
+    const result = parseRateLimitResult(data);
+    if (!result) {
       console.error('[rate-limit] Counter returned an invalid response');
       throw new RateLimitUnavailableError();
     }
 
     if (!result.allowed) {
-      throw new RateLimitExceededError(Math.max(1, result.retry_after_seconds || 1));
+      throw new RateLimitExceededError(result.retry_after_seconds);
     }
   }
 }
